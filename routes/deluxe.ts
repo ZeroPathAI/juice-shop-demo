@@ -15,32 +15,54 @@ const security = require('../lib/insecurity')
 
 module.exports.upgradeToDeluxe = function upgradeToDeluxe () {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const t = await UserModel.sequelize?.transaction()
     try {
-      const user = await UserModel.findOne({ where: { id: req.body.UserId, role: security.roles.customer } })
+      const user = await UserModel.findOne({ 
+        where: { id: req.body.UserId, role: security.roles.customer },
+        lock: true,
+        transaction: t
+      })
+      
       if (user == null) {
+        await t?.rollback()
         res.status(400).json({ status: 'error', error: 'Something went wrong. Please try again!' })
         return
       }
+
       if (req.body.paymentMode === 'wallet') {
-        const wallet = await WalletModel.findOne({ where: { UserId: req.body.UserId } })
+        const wallet = await WalletModel.findOne({ 
+          where: { UserId: req.body.UserId },
+          lock: true,
+          transaction: t
+        })
+        
         if ((wallet != null) && wallet.balance < 49) {
-          res.status(400).json({ status: 'error', error: 'Insuffienct funds in Wallet' })
+          await t?.rollback()
+          res.status(400).json({ status: 'error', error: 'Insufficient funds in Wallet' })
           return
-        } else {
-          await WalletModel.decrement({ balance: 49 }, { where: { UserId: req.body.UserId } })
+        } else if (wallet != null) {
+          await wallet.decrement('balance', { by: 49, transaction: t })
         }
       }
 
       if (req.body.paymentMode === 'card') {
-        const card = await CardModel.findOne({ where: { id: req.body.paymentId, UserId: req.body.UserId } })
+        const card = await CardModel.findOne({ 
+          where: { id: req.body.paymentId, UserId: req.body.UserId },
+          transaction: t
+        })
+        
         if ((card == null) || card.expYear < new Date().getFullYear() || (card.expYear === new Date().getFullYear() && card.expMonth - 1 < new Date().getMonth())) {
+          await t?.rollback()
           res.status(400).json({ status: 'error', error: 'Invalid Card' })
           return
         }
       }
 
-      user.update({ role: security.roles.deluxe, deluxeToken: security.deluxeToken(user.email) })
-        .then(user => {
+      await user.update(
+        { role: security.roles.deluxe, deluxeToken: security.deluxeToken(user.email) },
+        { transaction: t }
+      ).then(async (user) => {
+        await t?.commit()
           challengeUtils.solveIf(challenges.freeDeluxeChallenge, () => { return security.verify(utils.jwtFrom(req)) && req.body.paymentMode !== 'wallet' && req.body.paymentMode !== 'card' })
           // @ts-expect-error FIXME some properties missing in user
           user = utils.queryResultToJson(user)
