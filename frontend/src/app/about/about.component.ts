@@ -79,6 +79,7 @@ export class AboutComponent implements OnInit {
   populateSlideshowFromFeedbacks () {
     this.feedbackService.find().subscribe((feedbacks) => {
       for (let i = 0; i < feedbacks.length; i++) {
+        // Sanitize user feedback comments to prevent XSS attacks before displaying them in the UI
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         const sanitizedComment = this.sanitizer.sanitize(SecurityContext.HTML, feedbacks[i].comment) || '';
         feedbacks[i].comment = this.sanitizer.bypassSecurityTrustHtml(
