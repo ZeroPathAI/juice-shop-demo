@@ -4,7 +4,7 @@
  */
 
 import { Component, type OnInit } from '@angular/core'
-import { DomSanitizer } from '@angular/platform-browser'
+import { DomSanitizer, SecurityContext } from '@angular/platform-browser'
 import { ConfigurationService } from '../Services/configuration.service'
 import { FeedbackService } from '../Services/feedback.service'
 import { type IImage } from 'ng-simple-slideshow'
@@ -79,9 +79,12 @@ export class AboutComponent implements OnInit {
   populateSlideshowFromFeedbacks () {
     this.feedbackService.find().subscribe((feedbacks) => {
       for (let i = 0; i < feedbacks.length; i++) {
+        // Sanitize user feedback comments to prevent XSS attacks before displaying them in the UI
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        feedbacks[i].comment = `<span style="width: 90%; display:block;">${feedbacks[i].comment}<br/> (${this.stars[feedbacks[i].rating]})</span>`
-        feedbacks[i].comment = this.sanitizer.bypassSecurityTrustHtml(feedbacks[i].comment)
+        const sanitizedComment = this.sanitizer.sanitize(SecurityContext.HTML, feedbacks[i].comment) || '';
+        feedbacks[i].comment = this.sanitizer.bypassSecurityTrustHtml(
+          `<span style="width: 90%; display:block;">${sanitizedComment}<br/> (${this.stars[feedbacks[i].rating]})</span>`
+        )
         this.slideshowDataSource.push({ url: this.images[i % this.images.length], caption: feedbacks[i].comment })
       }
     }, (err) => {
