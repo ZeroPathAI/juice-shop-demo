@@ -8,6 +8,9 @@ User.init(
           validatePasswordHasAtLeastOneLowerCaseChar(clearTextPassword)
           validatePasswordHasAtLeastTenChar(clearTextPassword)
           validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
-          this.setDataValue('password', security.hash(clearTextPassword))
+          const { randomBytes, pbkdf2Sync } = require('crypto')
+          const salt = randomBytes(16).toString('hex')
+          const derivedKey = pbkdf2Sync(clearTextPassword, salt, 100000, 64, 'sha512').toString('hex')
+          this.setDataValue('password', `${salt}:${derivedKey}`)
         }
       },
