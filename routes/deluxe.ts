@@ -16,6 +16,11 @@ const security = require('../lib/insecurity')
 module.exports.upgradeToDeluxe = function upgradeToDeluxe () {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Verify authentication token
+      const token = utils.jwtFrom(req)
+      if (!security.verify(token)) {
+        return res.status(401).json({ status: 'error', error: 'Authentication required' })
+      }
       const user = await UserModel.findOne({ where: { id: req.body.UserId, role: security.roles.customer } })
       if (user == null) {
         res.status(400).json({ status: 'error', error: 'Something went wrong. Please try again!' })
