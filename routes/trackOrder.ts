@@ -20,6 +20,10 @@ module.exports = function trackOrder () {
       if (result.data[0] === undefined) {
         result.data[0] = { orderId: id }
       }
+      // Enforce ownership: only allow viewing own orders
+      if (req.user?.id !== result.data[0].userId) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
       res.json(result)
     }, () => {
       res.status(400).json({ error: 'Wrong Param' })
