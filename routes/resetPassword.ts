@@ -37,7 +37,8 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
+              const { password, totpSecret, deluxeToken, lastLoginIp, isActive, ...safeUser } = user.get({ plain: true })
+              res.json({ user: safeUser })
             }).catch((error: unknown) => {
               next(error)
             })
