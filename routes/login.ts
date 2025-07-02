@@ -22,7 +22,8 @@ module.exports = function login () {
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
-        const token = security.authorize(user)
+        const authPayload = { userId: user.data.id, email: user.data.email }
+        const token = security.authorize(authPayload)
         user.bid = basket.id // keep track of original basket
         security.authenticatedUsers.put(token, user)
         res.json({ authentication: { token, bid: basket.id, umail: user.data.email } })
