@@ -24,7 +24,8 @@ module.exports = function securityQuestion () {
           next(error)
         })
       } else {
-        res.json({})
+        // Prevent email enumeration by always returning a question key
+        res.json({ question: { question: 'Security question is not available.' } })
       }
     }).catch((error: unknown) => {
       next(error)
