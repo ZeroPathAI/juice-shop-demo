@@ -17,6 +17,11 @@ module.exports = function retrieveBasket () {
     const id = req.params.id
     BasketModel.findOne({ where: { id }, include: [{ model: ProductModel, paranoid: false, as: 'Products' }] })
       .then((basket: BasketModel | null) => {
+        const user = security.authenticatedUsers.from(req)
+        if (!user || !user.bid || user.bid != id) {
+          res.sendStatus(403)
+          return
+        }
         /* jshint eqeqeq:false */
         challengeUtils.solveIf(challenges.basketAccessChallenge, () => {
           const user = security.authenticatedUsers.from(req)
