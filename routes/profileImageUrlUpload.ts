@@ -19,6 +19,13 @@ module.exports = function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
+        let parsedUrl: URL
+        try { parsedUrl = new URL(url) } catch {
+          return next(new Error('Invalid URL'))
+        }
+        if (!['http:', 'https:'].includes(parsedUrl.protocol) || /^(?:127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/.test(parsedUrl.hostname)) {
+          return next(new Error('Invalid URL'))
+        }
         const imageRequest = request
           .get(url)
           .on('error', function (err: unknown) {
