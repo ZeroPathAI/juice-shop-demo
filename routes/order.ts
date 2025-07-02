@@ -136,6 +136,9 @@ module.exports = function placeOrder () {
           challengeUtils.solveIf(challenges.negativeOrderChallenge, () => { return totalPrice < 0 })
 
           if (req.body.UserId) {
+            if (!customer || req.body.UserId !== customer.data.id) {
+              return next(new Error('Forbidden: cannot modify other users wallet balance.'))
+            }
             if (req.body.orderDetails && req.body.orderDetails.paymentId === 'wallet') {
               const wallet = await WalletModel.findOne({ where: { UserId: req.body.UserId } })
               if ((wallet != null) && wallet.balance >= totalPrice) {
