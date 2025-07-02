@@ -9,9 +9,12 @@ import { RecycleModel } from '../models/recycle'
 import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
+  // Enforce fetching only the current user’s recycled items
+  const userId = (req as any).user?.id
   RecycleModel.findAll({
     where: {
-      id: JSON.parse(req.params.id)
+      id: JSON.parse(req.params.id),
+      userId: userId
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
