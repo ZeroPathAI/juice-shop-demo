@@ -7,6 +7,7 @@ import challengeUtils = require('../lib/challengeUtils')
 import { type Request, type Response, type NextFunction } from 'express'
 import * as db from '../data/mongodb'
 import { challenges } from '../data/datacache'
+import { ObjectId } from 'mongodb'
 
 const security = require('../lib/insecurity')
 
@@ -14,9 +15,14 @@ const security = require('../lib/insecurity')
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req) // vuln-code-snippet vuln-line forgedReviewChallenge
+    const id = req.body.id
+    if (typeof id !== 'string' || !/^[a-fA-F0-9]{24}$/.test(id)) {
+      return res.status(400).json({ error: 'Invalid review id' })
+    }
+    const message = String(req.body.message)
     db.reviewsCollection.update( // vuln-code-snippet neutral-line forgedReviewChallenge
-      { _id: req.body.id }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
-      { $set: { message: req.body.message } },
+      { _id: new ObjectId(id) }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
+      { $set: { message } },
       { multi: true } // vuln-code-snippet vuln-line noSqlReviewsChallenge
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
