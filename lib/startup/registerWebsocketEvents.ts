@@ -39,16 +39,24 @@ const registerWebsocketEvents = (server: any) => {
     })
 
     socket.on('verifyLocalXssChallenge', (data: any) => {
-      challengeUtils.solveIf(challenges.localXssChallenge, () => { return utils.contains(data, '<iframe src="javascript:alert(`xss`)">') })
-      challengeUtils.solveIf(challenges.xssBonusChallenge, () => { return utils.contains(data, config.get('challenges.xssBonusPayload')) })
+      const user = (socket.request as any).session?.passport?.user
+      if (!user) { return }
+      challengeUtils.solveIf(challenges.localXssChallenge, () => utils.contains(data, '<iframe src="javascript:alert(`xss`)">'))
+      challengeUtils.solveIf(challenges.xssBonusChallenge, () => utils.contains(data, config.get('challenges.xssBonusPayload')))
     })
 
     socket.on('verifySvgInjectionChallenge', (data: any) => {
-      challengeUtils.solveIf(challenges.svgInjectionChallenge, () => { return data?.match(/.*\.\.\/\.\.\/\.\.[\w/-]*?\/redirect\?to=https?:\/\/placekitten.com\/(g\/)?[\d]+\/[\d]+.*/) && security.isRedirectAllowed(data) })
+      const user = (socket.request as any).session?.passport?.user
+      if (!user) { return }
+      challengeUtils.solveIf(challenges.svgInjectionChallenge, () => {
+        return data?.match(/.*\.\.\/\.\.\/\.\.[\w/-]*?\/redirect\?to=https?:\/\/placekitten.com\/(g\/)?[\d]+\/[\d]+.*/) && security.isRedirectAllowed(data)
+      })
     })
 
     socket.on('verifyCloseNotificationsChallenge', (data: any) => {
-      challengeUtils.solveIf(challenges.closeNotificationsChallenge, () => { return Array.isArray(data) && data.length > 1 })
+      const user = (socket.request as any).session?.passport?.user
+      if (!user) { return }
+      challengeUtils.solveIf(challenges.closeNotificationsChallenge, () => Array.isArray(data) && data.length > 1)
     })
   })
 }
