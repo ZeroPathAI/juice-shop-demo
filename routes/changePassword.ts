@@ -25,7 +25,9 @@ module.exports = function changePassword () {
       const token = headers.authorization ? headers.authorization.substr('Bearer='.length) : null
       const loggedInUser = security.authenticatedUsers.get(token)
       if (loggedInUser) {
-        if (currentPassword && security.hash(currentPassword) !== loggedInUser.data.password) {
+        if (!currentPassword) {
+          res.status(401).send(res.__('Current password is required.'))
+        } else if (security.hash(currentPassword) !== loggedInUser.data.password) {
           res.status(401).send(res.__('Current password is not correct.'))
         } else {
           UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
