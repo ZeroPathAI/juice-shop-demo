@@ -6,6 +6,10 @@ module.exports = function productReviews () {
       { $set: { message: req.body.message } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
+        if (result.modified === 0) {
+          res.status(403).json({ error: 'Forbidden' })
+          return
+        }
         res.json(result)
       }, (err: unknown) => {
         res.status(500).json(err)
