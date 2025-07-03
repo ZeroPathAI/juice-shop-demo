@@ -27,11 +27,20 @@
 
     // create a wallet when a new user is registered using API
     if (name === 'User') {
-      resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
+      // ensure no admin privilege granted on creation
+      resource.create.send.before((req: Request, res: Response, context: { instance: any, continue: any }) => {
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        context.instance.isAdmin = false
+        return context.continue
+      })
+      // strip any isAdmin field on update to prevent privilege escalation
+      resource.update.send.before((req: Request, res: Response, context: { instance: any, continue: any }) => {
+        if (req.body.hasOwnProperty('isAdmin')) {
+          delete req.body.isAdmin
+        }
         return context.continue
       })
     }
