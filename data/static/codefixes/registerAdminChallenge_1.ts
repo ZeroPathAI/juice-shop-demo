@@ -31,7 +31,14 @@
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
-        context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        // force all new users to the customer role, ignoring any supplied role
+        context.instance.role = 'customer'
+        return context.continue
+      })
+      // prevent role elevation via the update endpoint
+      resource.update.send.before((req: Request, res: Response, context: { instance: any, continue: any }) => {
+        // remove any attempted role change on update
+        delete context.instance.role
         return context.continue
       })
     }
