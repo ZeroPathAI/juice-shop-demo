@@ -9,25 +9,15 @@ import { UserModel } from '../models/user'
 import { SecurityQuestionModel } from '../models/securityQuestion'
 
 module.exports = function securityQuestion () {
-  return ({ query }: Request, res: Response, next: NextFunction) => {
-    const email = query.email
-    SecurityAnswerModel.findOne({
-      include: [{
-        model: UserModel,
-        where: { email: email?.toString() }
-      }]
-    }).then((answer: SecurityAnswerModel | null) => {
-      if (answer != null) {
-        SecurityQuestionModel.findByPk(answer.SecurityQuestionId).then((question: SecurityQuestionModel | null) => {
-          res.json({ question })
-        }).catch((error: Error) => {
-          next(error)
-        })
-      } else {
-        res.json({})
-      }
-    }).catch((error: unknown) => {
-      next(error)
-    })
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Uniform response to prevent email enumeration
+    // TODO: implement rate limiting to mitigate brute-force enumeration
+    // Adding a fixed delay to reduce timing attack viability
+    setTimeout(() => {
+      res.json({
+        question: null,
+        message: 'If your email is registered, you will receive your security question shortly.'
+      })
+    }, 1000)
   }
 }
