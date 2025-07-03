@@ -50,7 +50,7 @@ module.exports = function dataExport () {
         memories: []
       }
 
-      const memories = await MemoryModel.findAll({ where: { UserId: req.body.UserId } })
+      const memories = await MemoryModel.findAll({ where: { UserId: loggedInUser.data.id } })
       memories.forEach((memory: MemoryModel) => {
         userData.memories.push({
           imageUrl: req.protocol + '://' + req.get('host') + '/' + memory.imagePath,
@@ -58,7 +58,7 @@ module.exports = function dataExport () {
         })
       })
 
-      db.ordersCollection.find({ email: updatedEmail }).then((orders: Array<{
+      db.ordersCollection.find({ email }).then((orders: Array<{
         orderId: string
         totalPrice: number
         products: ProductModel[]
@@ -86,6 +86,9 @@ module.exports = function dataExport () {
         }>) => {
           if (reviews.length > 0) {
             reviews.forEach(review => {
+              if (review.author !== email) {
+                return next(new Error('Blocked illegal activity: review author mismatch'))
+              }
               userData.reviews.push({
                 message: review.message,
                 author: review.author,
