@@ -65,6 +65,10 @@ exports.observeFileUploadMetricsMiddleware = function observeFileUploadMetricsMi
 
 exports.serveMetrics = function serveMetrics () {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers['authorization'] ?? ''
+    if (authHeader !== `Bearer ${config.get<string>('application.metricsAuthToken')}`) {
+      return res.status(401).send('Unauthorized')
+    }
     challengeUtils.solveIf(challenges.exposedMetricsChallenge, () => {
       const userAgent = req.headers['user-agent'] ?? ''
       return !userAgent.includes('Prometheus')
