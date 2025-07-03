@@ -27,6 +27,13 @@ const registerWebsocketEvents = (server: any) => {
       firstConnectedSocket = socket.id
     }
 
+    const token = socket.handshake.auth?.token as string
+    try {
+      security.verify(token)
+    } catch (err) {
+      socket.disconnect()
+      return
+    }
     notifications.forEach((notification: any) => {
       socket.emit('challenge solved', notification)
     })
