@@ -19,6 +19,12 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id) {
+          if (user.data.totpSecret) {
+            const totp = req.body.totp
+            if (!totp || !security.verifyTotp(user.data.totpSecret, totp)) {
+              return res.status(401).send(res.__('Invalid email or password.'))
+            }
+          }
           afterLogin(user, res, next)
         } else {
           res.status(401).send(res.__('Invalid email or password.'))
