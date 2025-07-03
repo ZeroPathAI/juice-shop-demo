@@ -1,3 +1,5 @@
+import { randomBytes, pbkdf2Sync } from 'crypto'
+
 User.init(
       password: {
         type: DataTypes.STRING,
@@ -8,6 +10,8 @@ User.init(
           validatePasswordHasAtLeastOneLowerCaseChar(clearTextPassword)
           validatePasswordHasAtLeastTenChar(clearTextPassword)
           validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
-          this.setDataValue('password', security.hash(clearTextPassword))
+          const salt = randomBytes(16).toString('hex')
+          const hash = pbkdf2Sync(clearTextPassword, salt, 100000, 64, 'sha512').toString('hex')
+          this.setDataValue('password', `${salt}$${hash}`)
         }
       },
