@@ -7,7 +7,12 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveLogFiles () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { params } = req
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403)
+      return next(new Error('Unauthorized'))
+    }
     const file = params.file
 
     if (!file.includes('/')) {
