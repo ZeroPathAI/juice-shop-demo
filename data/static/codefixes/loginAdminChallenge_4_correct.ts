@@ -14,21 +14,14 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // TODO: implement rate limiting to prevent brute force attacks
     models.sequelize.query(`SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL`,
       { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
-        if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
-        } else if (user.data?.id) {
+        // Normalize timing by hashing password
+        security.hash(req.body.password)
+        if (user.data?.id && user.data.totpSecret === '') {
           afterLogin(user, res, next)
         } else {
           res.status(401).send(res.__('Invalid email or password.'))
