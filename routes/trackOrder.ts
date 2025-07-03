@@ -11,11 +11,19 @@ import { challenges } from '../data/datacache'
 
 module.exports = function trackOrder () {
   return (req: Request, res: Response) => {
+    // Authentication check
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
     const id = !utils.isChallengeEnabled(challenges.reflectedXssChallenge) ? String(req.params.id).replace(/[^\w-]+/g, '') : req.params.id
 
     challengeUtils.solveIf(challenges.reflectedXssChallenge, () => { return utils.contains(id, '<iframe src="javascript:alert(`xss`)">') })
-    db.ordersCollection.find({ $where: `this.orderId === '${id}'` }).then((order: any) => {
+    db.ordersCollection.find({ orderId: id, userId: req.user.id }).then((order: any) => {
       const result = utils.queryResultToJson(order)
+      // Authorization check
+      if (!result.data.length) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
       challengeUtils.solveIf(challenges.noSqlOrdersChallenge, () => { return result.data.length > 1 })
       if (result.data[0] === undefined) {
         result.data[0] = { orderId: id }
