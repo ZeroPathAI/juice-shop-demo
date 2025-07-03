@@ -97,8 +97,13 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
     if (response.action === 'function') {
       // @ts-expect-error FIXME unclean usage of any type as index
       if (response.handler && botUtils[response.handler]) {
-        // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        // prevent abuse of sensitive handlers like couponCode
+        if (response.handler === 'couponCode') {
+          res.status(403).json({ error: 'Unauthorized function' })
+        } else {
+          // @ts-expect-error FIXME unclean usage of any type as index
+          res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        }
       } else {
         res.status(200).json({
           action: 'response',
