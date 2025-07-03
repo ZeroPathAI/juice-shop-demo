@@ -19,7 +19,7 @@ module.exports = function securityQuestion () {
     }).then((answer: SecurityAnswerModel | null) => {
       if (answer != null) {
         SecurityQuestionModel.findByPk(answer.SecurityQuestionId).then((question: SecurityQuestionModel | null) => {
-          res.json({ question })
+          res.json({})
         }).catch((error: Error) => {
           next(error)
         })
