@@ -11,6 +11,19 @@ let isEventListenerCreated = false
 module.exports.contractExploitListener = function contractExploitListener () {
   return (req: Request, res: Response) => {
     const metamaskAddress = req.body.walletAddress
+    const signature = req.body.signature
+    if (!signature) {
+      return res.status(401).json({ success: false, message: 'Signature required' })
+    }
+    let recovered
+    try {
+      recovered = ethers.utils.verifyMessage(metamaskAddress, signature)
+    } catch (error) {
+      return res.status(401).json(utils.getErrorMessage(error))
+    }
+    if (recovered.toLowerCase() !== metamaskAddress.toLowerCase()) {
+      return res.status(401).json({ success: false, message: 'Invalid signature' })
+    }
     walletsConnected.add(metamaskAddress)
     try {
       const provider = new ethers.WebSocketProvider('wss://eth-sepolia.g.alchemy.com/v2/FZDapFZSs1l6yhHW4VnQqsi18qSd-3GJ')
