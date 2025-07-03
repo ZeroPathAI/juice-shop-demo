@@ -6,6 +6,7 @@
 import Hashids = require('hashids/cjs')
 import { type Request, type Response } from 'express'
 import { challenges } from '../data/datacache'
+import { isAuthorized } from '../lib/insecurity'
 
 const challengeUtils = require('../lib/challengeUtils')
 
@@ -33,7 +34,7 @@ module.exports.restoreProgress = function restoreProgress () {
 }
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
-  return async ({ params }: Request, res: Response) => {
+  return [ isAuthorized(), async ({ params }: Request, res: Response) => {
     const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     const continueCodeFindIt = params.continueCode
     const idsFindIt = hashids.decode(continueCodeFindIt)
