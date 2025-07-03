@@ -14,6 +14,9 @@ const Op = sequelize.Op
 module.exports.continueCode = function continueCode () {
   const hashids = new Hashids('this is my salt', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
   return (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
     const ids = []
     for (const name in challenges) {
       if (Object.prototype.hasOwnProperty.call(challenges, name)) {
