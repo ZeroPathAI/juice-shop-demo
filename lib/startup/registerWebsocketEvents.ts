@@ -30,11 +30,16 @@ const registerWebsocketEvents = (server: any) => {
     notifications.forEach((notification: any) => {
       socket.emit('challenge solved', notification)
     })
+    // Store flags notified to this socket to prevent unauthorized deletions
+    (socket as any).allowedNotificationFlags = notifications.map((n: any) => n.flag)
 
     socket.on('notification received', (data: any) => {
-      const i = notifications.findIndex(({ flag }: any) => flag === data)
-      if (i > -1) {
-        notifications.splice(i, 1)
+      const allowed = (socket as any).allowedNotificationFlags as string[]
+      if (allowed.includes(data)) {
+        const i = notifications.findIndex(({ flag }: any) => flag === data)
+        if (i > -1) {
+          notifications.splice(i, 1)
+        }
       }
     })
 
