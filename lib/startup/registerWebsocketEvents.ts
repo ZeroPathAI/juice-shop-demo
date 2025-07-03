@@ -32,7 +32,8 @@ const registerWebsocketEvents = (server: any) => {
     })
 
     socket.on('notification received', (data: any) => {
-      const i = notifications.findIndex(({ flag }: any) => flag === data)
+      const userName = (socket.request.user && (socket.request.user as any).username) as string
+      const i = notifications.findIndex(({ flag, name }: any) => flag === data && name === userName)
       if (i > -1) {
         notifications.splice(i, 1)
       }
