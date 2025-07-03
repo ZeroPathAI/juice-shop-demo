@@ -19,6 +19,14 @@ module.exports = function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
+        try {
+          const parsedUrl = new URL(url)
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+            throw new Error('Invalid protocol')
+          }
+        } catch (err) {
+          return next(new Error('Blocked illegal imageUrl'))
+        }
         const imageRequest = request
           .get(url)
           .on('error', function (err: unknown) {
