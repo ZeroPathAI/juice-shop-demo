@@ -27,11 +27,22 @@
 
     // create a wallet when a new user is registered using API
     if (name === 'User') {
+      // prevent isAdmin field from being set by clients
+      resource.create.parse.before((req: Request, res: Response, context: any) => {
+        delete (req.body as any).isAdmin
+        return context.continue
+      })
+      // create a wallet when a new user is registered using API
       resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        return context.continue
+      })
+      // prevent privilege escalation on update
+      resource.update.parse.before((req: Request, res: Response, context: any) => {
+        delete (req.body as any).isAdmin
         return context.continue
       })
     }
