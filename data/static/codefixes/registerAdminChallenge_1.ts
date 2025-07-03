@@ -28,10 +28,15 @@
     // create a wallet when a new user is registered using API
     if (name === 'User') {
       resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
+        delete (req.body as any).isAdmin
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        return context.continue
+      })
+      resource.update.send.before((req: Request, res: Response, context: any) => {
+        delete (req.body as any).isAdmin
         return context.continue
       })
     }
