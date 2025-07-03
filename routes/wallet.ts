@@ -6,6 +6,7 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import { WalletModel } from '../models/wallet'
 import { CardModel } from '../models/card'
+const MAX_WALLET_TOP_UP = 1000
 
 module.exports.getWalletBalance = function getWalletBalance () {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -23,7 +24,11 @@ module.exports.addWalletBalance = function addWalletBalance () {
     const cardId = req.body.paymentId
     const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: req.body.UserId } }) : null
     if (card != null) {
-      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: req.body.UserId } }).then(() => {
+      const amount = Number(req.body.balance)
+      if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_WALLET_TOP_UP) {
+        return res.status(400).json({ status: 'error', message: 'Invalid top-up amount.' })
+      }
+      WalletModel.increment({ balance: amount }, { where: { UserId: req.body.UserId } }).then(() => {
         res.status(200).json({ status: 'success', data: req.body.balance })
       }).catch(() => {
         res.status(404).json({ status: 'error' })
