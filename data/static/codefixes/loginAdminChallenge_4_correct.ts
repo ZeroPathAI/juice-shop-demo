@@ -19,6 +19,15 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id) {
+          // perform TOTP check after password verification
+          if (user.data.totpSecret) {
+            const totpValid = security.verifyTotp(req.body.totpToken, user.data.totpSecret)
+            if (!totpValid) {
+              // generic error for both invalid credentials and TOTP failures
+              res.status(401).send(res.__('Invalid email or password.'))
+              return
+            }
+          }
           afterLogin(user, res, next)
         } else {
           res.status(401).send(res.__('Invalid email or password.'))
