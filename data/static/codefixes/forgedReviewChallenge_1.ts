@@ -11,9 +11,8 @@ module.exports = function productReviews () {
       return res.status(400).json({ error: 'Invalid id' })
     }
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message } },
-      { multi: true }
+      filter,
+      { $set: { message: req.body.message } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         res.json(result)
