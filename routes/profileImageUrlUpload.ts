@@ -10,12 +10,21 @@ import logger from '../lib/logger'
 import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
+import { URL } from 'url'
 const request = require('request')
 
 module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      try {
+        const parsed = new URL(url)
+        if (!['http:', 'https:'].includes(parsed.protocol) || /^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname)) {
+          return next(new Error('Invalid image URL'))
+        }
+      } catch {
+        return next(new Error('Invalid image URL'))
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
