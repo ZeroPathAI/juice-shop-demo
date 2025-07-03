@@ -7,13 +7,29 @@ import utils = require('../lib/utils')
 import challengeUtils = require('../lib/challengeUtils')
 import { type Request, type Response, type NextFunction } from 'express'
 import { challenges } from '../data/datacache'
+import { URL } from 'url'
 
 const security = require('../lib/insecurity')
 
 module.exports = function performRedirect () {
   return ({ query }: Request, res: Response, next: NextFunction) => {
     const toUrl: string = query.to as string
-    if (security.isRedirectAllowed(toUrl)) {
+
+    // Strict origin check to prevent open redirect vulnerability
+    let isAllowedStrict = false;
+    try {
+      const target = new URL(toUrl);
+      for (const allowedUrl of security.redirectAllowlist) {
+        const allowed = new URL(allowedUrl);
+        if (target.origin === allowed.origin) {
+          isAllowedStrict = true;
+          break;
+        }
+      }
+    } catch {
+      isAllowedStrict = false;
+    }
+    if (isAllowedStrict) {
       challengeUtils.solveIf(challenges.redirectCryptoCurrencyChallenge, () => { return toUrl === 'https://explorer.dash.org/address/Xr556RzuwX6hg5EGpkybbv5RanJoZN17kW' || toUrl === 'https://blockchain.info/address/1AbKfgvw9psQ41NbLi8kufDQTezwG8DRZm' || toUrl === 'https://etherscan.io/address/0x0f933ab9fcaaa782d0279c300d73750e1311eae6' })
       challengeUtils.solveIf(challenges.redirectChallenge, () => { return isUnintendedRedirect(toUrl) })
       res.redirect(toUrl)
