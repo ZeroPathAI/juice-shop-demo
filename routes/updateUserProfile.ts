@@ -15,6 +15,11 @@ const challenges = cache.challenges
 module.exports = function updateUserProfile () {
   return (req: Request, res: Response, next: NextFunction) => {
     const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
+    // Enforce CSRF token header matches auth token cookie
+    const csrfToken = req.headers['x-csrf-token']
+    if (!csrfToken || csrfToken !== req.cookies.token) {
+      return next(new Error('Invalid CSRF token'))
+    }
 
     if (loggedInUser) {
       UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
