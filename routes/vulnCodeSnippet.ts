@@ -39,6 +39,10 @@ export const retrieveCodeSnippet = async (challengeKey: string) => {
 }
 
 exports.serveCodeSnippet = () => async (req: Request<SnippetRequestBody, Record<string, unknown>, Record<string, unknown>>, res: Response, next: NextFunction) => {
+  if (!req.headers.authorization) {
+    res.status(401).json({ status: 'error', error: 'Authentication required' })
+    return
+  }
   try {
     const snippetData = await retrieveCodeSnippet(req.params.challenge)
     if (snippetData == null) {
