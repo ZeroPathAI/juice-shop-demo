@@ -50,7 +50,7 @@ module.exports = function dataExport () {
         memories: []
       }
 
-      const memories = await MemoryModel.findAll({ where: { UserId: req.body.UserId } })
+      const memories = await MemoryModel.findAll({ where: { UserId: loggedInUser.data.id } })
       memories.forEach((memory: MemoryModel) => {
         userData.memories.push({
           imageUrl: req.protocol + '://' + req.get('host') + '/' + memory.imagePath,
