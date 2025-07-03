@@ -27,15 +27,22 @@ module.exports.restoreProgress = function restoreProgress () {
       }
       res.json({ data: ids.length + ' solved challenges have been restored.' })
     } else {
+      // Log invalid or unauthorized attempt
+      console.warn(`User ${req.user?.id} provided invalid continue code ${req.params.continueCode}`)
       res.status(404).send('Invalid continue code.')
     }
   }
 }
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
-  return async ({ params }: Request, res: Response) => {
-    const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-    const continueCodeFindIt = params.continueCode
+  return async (req: Request, res: Response) => {
+    // Authentication: ensure user is logged in
+    if (!req.user) { res.status(401).send('Authentication required'); return; }
+    // Logging attempt
+    console.info(`User ${req.user.id} attempting to restore FindIt progress with code ${req.params.continueCode}`)
+    // Use user-specific salt to validate ownership of continue code
+    const hashids = new Hashids(`this is the salt for findIt challenges:${req.user.id}`, 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+    const continueCodeFindIt = req.params.continueCode
     const idsFindIt = hashids.decode(continueCodeFindIt)
     if (idsFindIt.length > 0) {
       for (const key in challenges) {
