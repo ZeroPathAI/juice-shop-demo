@@ -18,7 +18,7 @@ module.exports = function dataExport () {
     if (loggedInUser?.data?.email && loggedInUser.data.id) {
       const username = loggedInUser.data.username
       const email = loggedInUser.data.email
-      const updatedEmail = email.replace(/[aeiou]/gi, '*')
+      const updatedEmail = email
       const userData:
       {
         username: string
@@ -102,11 +102,11 @@ module.exports = function dataExport () {
           res.status(200).send({ userData: JSON.stringify(userData, null, 2), confirmation: 'Your data export will open in a new Browser window.' })
         },
         () => {
-          next(new Error(`Error retrieving reviews for ${updatedEmail}`))
+          next(new Error(`Error retrieving reviews for ${email}`))
         })
       },
       () => {
-        next(new Error(`Error retrieving orders for ${updatedEmail}`))
+        next(new Error(`Error retrieving orders for ${email}`))
       })
     } else {
       next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
