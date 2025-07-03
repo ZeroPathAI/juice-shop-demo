@@ -10,8 +10,8 @@ const { ObjectId } = require('mongodb');
     }
     const sanitizedMessage = typeof req.body.message === 'string' ? req.body.message : ''
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message } }
+      filter,
+      { $set: { message: sanitizedMessage } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         res.json(result)
