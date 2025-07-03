@@ -32,6 +32,8 @@
           console.log(err)
         })
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        // Prevent clients from setting themselves as admin
+        context.instance.isAdmin = false
         return context.continue
       })
     }
