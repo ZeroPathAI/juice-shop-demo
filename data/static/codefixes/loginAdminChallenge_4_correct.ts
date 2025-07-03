@@ -14,6 +14,7 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // TODO: implement rate limiting to prevent brute force attacks
     models.sequelize.query(`SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL`,
       { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
       .then((authenticatedUser) => {
