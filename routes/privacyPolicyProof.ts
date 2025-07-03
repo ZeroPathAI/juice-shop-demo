@@ -11,6 +11,9 @@ import challengeUtils = require('../lib/challengeUtils')
 
 module.exports = function servePrivacyPolicyProof () {
   return (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).send('Authentication required')
+    }
     challengeUtils.solveIf(challenges.privacyPolicyProofChallenge, () => { return true })
     res.sendFile(path.resolve('frontend/dist/frontend/assets/private/thank-you.jpg'))
   }
