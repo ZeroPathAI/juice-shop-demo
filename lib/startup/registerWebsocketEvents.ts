@@ -33,7 +33,8 @@ const registerWebsocketEvents = (server: any) => {
 
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
-      if (i > -1) {
+      // Only allow the original (authorized) socket to delete notifications to prevent IDOR
+      if (i > -1 && socket.id === firstConnectedSocket) {
         notifications.splice(i, 1)
       }
     })
