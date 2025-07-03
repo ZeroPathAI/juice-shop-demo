@@ -96,9 +96,12 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
       // @ts-expect-error FIXME unclean usage of any type as index
-      if (response.handler && botUtils[response.handler]) {
+      const handlerName = response.handler
+      if (handlerName === 'couponCode') {
+        res.status(403).json({ error: 'Not authorized' })
+      } else if (handlerName && botUtils[handlerName]) {
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        res.status(200).json(await botUtils[handlerName](req.body.query, user))
       } else {
         res.status(200).json({
           action: 'response',
