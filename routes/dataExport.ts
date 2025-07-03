@@ -58,7 +58,7 @@ module.exports = function dataExport () {
         })
       })
 
-      db.ordersCollection.find({ email: updatedEmail }).then((orders: Array<{
+      db.ordersCollection.find({ email: email }).then((orders: Array<{
         orderId: string
         totalPrice: number
         products: ProductModel[]
@@ -106,7 +106,7 @@ module.exports = function dataExport () {
         })
       },
       () => {
-        next(new Error(`Error retrieving orders for ${updatedEmail}`))
+        next(new Error(`Error retrieving orders for ${email}`))
       })
     } else {
       next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
