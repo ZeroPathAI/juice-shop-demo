@@ -11,7 +11,11 @@ import challengeUtils = require('../lib/challengeUtils')
 
 module.exports = function servePrivacyPolicyProof () {
   return (req: Request, res: Response) => {
-    challengeUtils.solveIf(challenges.privacyPolicyProofChallenge, () => { return true })
-    res.sendFile(path.resolve('frontend/dist/frontend/assets/private/thank-you.jpg'))
+    if ((req as any).isAuthenticated && (req as any).isAuthenticated()) {
+      challengeUtils.solveIf(challenges.privacyPolicyProofChallenge, () => true)
+      res.sendFile(path.resolve('frontend/dist/frontend/assets/private/thank-you.jpg'))
+    } else {
+      res.status(401).send('Authentication required')
+    }
   }
 }
