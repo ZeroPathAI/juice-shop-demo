@@ -1,5 +1,6 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import * as accuracy from '../lib/accuracy'
+import * as security from '../lib/security'
 
 const challengeUtils = require('../lib/challengeUtils')
 const fs = require('fs')
@@ -67,6 +68,9 @@ export const serveCodeFixes = () => (req: Request<FixesRequestParams, Record<str
 }
 
 export const checkCorrectFix = () => async (req: Request<Record<string, unknown>, Record<string, unknown>, VerdictRequestBody>, res: Response, next: NextFunction) => {
+  if (!security.authenticatedUsers.from(req)) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
   const key = req.body.key
   const selectedFix = req.body.selectedFix
   const fixData = readFixes(key)
