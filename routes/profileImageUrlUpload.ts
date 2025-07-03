@@ -16,6 +16,21 @@ module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      // Validate URL to prevent SSRF: must be HTTP/HTTPS and not local/private IP
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(url)
+      } catch (err) {
+        return next(new Error('Invalid image URL'))
+      }
+      const { protocol, hostname } = parsedUrl
+      if (protocol !== 'http:' && protocol !== 'https:') {
+        return next(new Error('Invalid protocol in image URL'))
+      }
+      const privateIpPattern = /^(127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
+      if (privateIpPattern.test(hostname)) {
+        return next(new Error('Requests to local/private hosts are not allowed'))
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
