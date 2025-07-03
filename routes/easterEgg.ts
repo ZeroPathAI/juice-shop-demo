@@ -11,7 +11,10 @@ import challengeUtils = require('../lib/challengeUtils')
 
 module.exports = function serveEasterEgg () {
   return (req: Request, res: Response) => {
-    challengeUtils.solveIf(challenges.easterEggLevelTwoChallenge, () => { return true })
+    if (!req.user) {
+      return res.status(401).send('Unauthorized')
+    }
+    challengeUtils.solveIf(challenges.easterEggLevelTwoChallenge, () => true)
     res.sendFile(path.resolve('frontend/dist/frontend/assets/private/threejs-demo.html'))
   }
 }
