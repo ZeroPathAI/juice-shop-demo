@@ -65,6 +65,13 @@ exports.observeFileUploadMetricsMiddleware = function observeFileUploadMetricsMi
 
 exports.serveMetrics = function serveMetrics () {
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Restrict metrics endpoint to local requests only to prevent information disclosure
+    const remoteAddress = req.ip
+    if (remoteAddress !== '127.0.0.1' && remoteAddress !== '::1') {
+      res.status(403).end()
+      return
+    }
+
     challengeUtils.solveIf(challenges.exposedMetricsChallenge, () => {
       const userAgent = req.headers['user-agent'] ?? ''
       return !userAgent.includes('Prometheus')
