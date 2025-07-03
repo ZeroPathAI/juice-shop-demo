@@ -9,9 +9,14 @@ import { RecycleModel } from '../models/recycle'
 import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
+  const rawId = req.params.id
+  if (!/^\d+$/.test(rawId)) {
+    return res.status(400).send(utils.queryResultToJson({ err: 'Invalid id parameter.' }))
+  }
+  const id = Number(rawId)
   RecycleModel.findAll({
     where: {
-      id: JSON.parse(req.params.id)
+      id
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
