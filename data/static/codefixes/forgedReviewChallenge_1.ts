@@ -2,8 +2,9 @@ module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req)
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message, author: user.data.email } },
+      // only allow the authenticated user to update their own review, and ensure message is a string
+      { _id: req.body.id, author: user.data.email },
+      { $set: { message: String(req.body.message), author: user.data.email } },
       { multi: true }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
