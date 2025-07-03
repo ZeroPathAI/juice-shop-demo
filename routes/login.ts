@@ -22,7 +22,7 @@ module.exports = function login () {
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
-        const token = security.authorize(user)
+        const token = security.authorize({ ...user, authType: 'full' })
         user.bid = basket.id // keep track of original basket
         security.authenticatedUsers.put(token, user)
         res.json({ authentication: { token, bid: basket.id, umail: user.data.email } })
@@ -42,7 +42,8 @@ module.exports = function login () {
             data: {
               tmpToken: security.authorize({
                 userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
+                type: 'password_valid_needs_second_factor_token',
+                authType: '2fa_temp'
               })
             }
           })
