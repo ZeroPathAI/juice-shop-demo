@@ -21,7 +21,10 @@ module.exports.addMemory = function addMemory () {
 
 module.exports.getMemories = function getMemories () {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const memories = await MemoryModel.findAll({ include: [UserModel] })
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized' })
+    }
+    const memories = await MemoryModel.findAll({ where: { UserId: req.user.id }, include: [UserModel] })
     res.status(200).json({ status: 'success', data: memories })
   }
 }
