@@ -24,6 +24,11 @@ module.exports = function updateUserProfile () {
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
               req.body.username !== user.username
           })
+          // Enforce CSRF origin check
+          if (!(req.headers.origin?.startsWith(process.env.BASE_URL) ||
+                req.headers.referer?.startsWith(process.env.BASE_URL))) {
+            return next(new Error('Invalid CSRF origin'))
+          }
           void user.update({ username: req.body.username }).then((savedUser: UserModel) => {
             // @ts-expect-error FIXME some properties missing in savedUser
             savedUser = utils.queryResultToJson(savedUser)
