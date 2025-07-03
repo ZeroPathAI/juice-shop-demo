@@ -11,7 +11,8 @@ import * as utils from '../lib/utils'
 exports.getRecycleItem = () => (req: Request, res: Response) => {
   RecycleModel.findAll({
     where: {
-      id: JSON.parse(req.params.id)
+      id: JSON.parse(req.params.id),
+      userId: (req as any).user.id
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
