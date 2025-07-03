@@ -86,6 +86,9 @@ module.exports = function dataExport () {
         }>) => {
           if (reviews.length > 0) {
             reviews.forEach(review => {
+              if (review.author !== email) {
+                return next(new Error('Blocked illegal activity: review author mismatch'))
+              }
               userData.reviews.push({
                 message: review.message,
                 author: review.author,
