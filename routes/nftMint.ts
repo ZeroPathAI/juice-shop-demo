@@ -32,7 +32,9 @@ module.exports.walletNFTVerify = function walletNFTVerify () {
   return (req: Request, res: Response) => {
     try {
       const metamaskAddress = req.body.walletAddress
-      if (addressesMinted.has(metamaskAddress)) {
+      const signature = req.body.signature
+      const recoveredAddress = ethers.utils.verifyMessage(metamaskAddress, signature)
+      if (addressesMinted.has(metamaskAddress) && recoveredAddress.toLowerCase() === metamaskAddress.toLowerCase()) {
         addressesMinted.delete(metamaskAddress)
         challengeUtils.solveIf(challenges.nftMintChallenge, () => true)
         res.status(200).json({ success: true, message: 'Challenge successfully solved', status: challenges.nftMintChallenge })
