@@ -19,6 +19,11 @@ module.exports = function updateUserProfile () {
     if (loggedInUser) {
       UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
         if (user != null) {
+          // CSRF protection: verify request origin matches server base URL
+          const origin = req.headers.origin || req.headers.referer
+          if (!origin || !origin.startsWith(process.env.BASE_URL)) {
+            return next(new Error('Blocked potential CSRF attempt from ' + req.socket.remoteAddress))
+          }
           challengeUtils.solveIf(challenges.csrfChallenge, () => {
             return ((req.headers.origin?.includes('://htmledit.squarefree.com')) ??
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
