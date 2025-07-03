@@ -55,6 +55,10 @@ module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
 module.exports.restoreProgressFixIt = function restoreProgressFixIt () {
   const hashids = new Hashids('yet another salt for the fixIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
   return async ({ params }: Request, res: Response) => {
+    if (challengeUtils.notSolved(challenges.continueCodeChallenge)) {
+      res.status(403).send('Continue code not issued.')
+      return
+    }
     const continueCodeFixIt = params.continueCode
     const idsFixIt = hashids.decode(continueCodeFixIt)
     if (idsFixIt.length > 0) {
