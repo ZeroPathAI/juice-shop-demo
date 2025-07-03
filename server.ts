@@ -343,11 +343,11 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   /* Feedbacks: GET allowed for feedback carousel, POST allowed in order to provide feedback without being logged in */
   app.use('/api/Feedbacks/:id', security.isAuthorized())
   /* Users: Only POST is allowed in order to register a new user */
-  app.get('/api/Users', security.isAuthorized())
+  app.get('/api/Users', security.isAuthorized(), security.isAdmin())
   app.route('/api/Users/:id')
-    .get(security.isAuthorized())
-    .put(security.denyAll())
-    .delete(security.denyAll())
+    .get(security.isAuthorized(), security.isAdmin())
+    .put(security.isAuthorized(), security.isAdmin())
+    .delete(security.isAuthorized(), security.isAdmin())
   /* Products: Only GET is allowed in order to view products */ // vuln-code-snippet neutral-line changeProductChallenge
   app.post('/api/Products', security.isAuthorized()) // vuln-code-snippet neutral-line changeProductChallenge
   // app.put('/api/Products/:id', security.isAuthorized()) // vuln-code-snippet vuln-line changeProductChallenge
@@ -459,7 +459,7 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   finale.initialize({ app, sequelize })
 
   const autoModels = [
-    { name: 'User', exclude: ['password', 'totpSecret'], model: UserModel },
+    { name: 'User', exclude: ['password', 'totpSecret', 'isAdmin'], model: UserModel },
     { name: 'Product', exclude: [], model: ProductModel },
     { name: 'Feedback', exclude: [], model: FeedbackModel },
     { name: 'BasketItem', exclude: [], model: BasketItemModel },
