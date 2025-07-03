@@ -34,4 +34,9 @@
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
         return context.continue
       })
+      // prevent admin role updates via API
+      resource.update.send.before((req: Request, res: Response, context: any) => {
+        delete req.body.isAdmin
+        return context.continue
+      })
     }
