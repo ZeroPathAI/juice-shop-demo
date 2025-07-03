@@ -24,8 +24,15 @@ module.exports.orderHistory = function orderHistory () {
 
 module.exports.allOrders = function allOrders () {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const order = await ordersCollection.find()
-    res.status(200).json({ status: 'success', data: order.reverse() })
+    const loggedInUser = security.authenticatedUsers.get(req.headers?.authorization?.replace('Bearer ', ''))
+    if (loggedInUser?.data?.email && loggedInUser.data.id) {
+      const email = loggedInUser.data.email
+      const updatedEmail = email.replace(/[aeiou]/gi, '*')
+      const order = await ordersCollection.find({ email: updatedEmail })
+      res.status(200).json({ status: 'success', data: order.reverse() })
+    } else {
+      next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
+    }
   }
 }
 
