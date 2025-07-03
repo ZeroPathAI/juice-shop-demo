@@ -11,6 +11,9 @@ import { challenges } from '../data/datacache'
 
 module.exports = function trackOrder () {
   return (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
     const id = !utils.isChallengeEnabled(challenges.reflectedXssChallenge) ? String(req.params.id).replace(/[^\w-]+/g, '') : req.params.id
 
     challengeUtils.solveIf(challenges.reflectedXssChallenge, () => { return utils.contains(id, '<iframe src="javascript:alert(`xss`)">') })
