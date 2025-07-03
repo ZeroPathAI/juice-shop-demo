@@ -7,8 +7,20 @@
   app.use('/.well-known', express.static('.well-known'))
 
   /* /encryptionkeys directory browsing */
-  app.use('/encryptionkeys', serveIndexMiddleware, serveIndex('encryptionkeys', { icons: true, view: 'details' }))
-  app.use('/encryptionkeys/:file', keyServer())
+  app.use('/encryptionkeys', (req, res, next) => {
+    const auth = security.authenticatedUsers.get(req.cookies.token)
+    if (!auth) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required' })
+    }
+    next()
+  }, serveIndexMiddleware, serveIndex('encryptionkeys', { icons: true, view: 'details' }))
+  app.use('/encryptionkeys/:file', (req, res, next) => {
+    const auth = security.authenticatedUsers.get(req.cookies.token)
+    if (!auth) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required' })
+    }
+    next()
+  }, keyServer())
 
   /* Swagger documentation for B2B v2 endpoints */
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
