@@ -60,7 +60,7 @@ module.exports.restoreProgressFixIt = function restoreProgressFixIt () {
     if (idsFixIt.length > 0) {
       for (const key in challenges) {
         if (Object.prototype.hasOwnProperty.call(challenges, key)) {
-          if (idsFixIt.includes(challenges[key].id)) {
+          if (idsFixIt.includes(challenges[key].id) && !challengeUtils.notSolvedFindIt(key)) {
             await challengeUtils.solveFixIt(key, true)
           }
         }
