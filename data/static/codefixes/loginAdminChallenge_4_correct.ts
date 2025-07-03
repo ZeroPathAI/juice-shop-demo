@@ -19,17 +19,9 @@ module.exports = function login () {
       { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
-        if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
-        } else if (user.data?.id) {
+        // Normalize timing by hashing password
+        security.hash(req.body.password)
+        if (user.data?.id && user.data.totpSecret === '') {
           afterLogin(user, res, next)
         } else {
           res.status(401).send(res.__('Invalid email or password.'))
