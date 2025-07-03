@@ -9,12 +9,13 @@ import { BasketModel } from '../models/basket'
 const security = require('../lib/insecurity')
 
 module.exports = function applyCoupon () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
-    const id = params.id
+  return (req: Request, res: Response, next: NextFunction) => {
+    const id = req.params.id
     let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
-    BasketModel.findByPk(id).then((basket: BasketModel | null) => {
+    const userId = (req as any).user.data.id
+    BasketModel.findOne({ where: { id: id, userId: userId } }).then((basket: BasketModel | null) => {
       if (basket != null) {
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
