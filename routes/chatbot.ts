@@ -18,6 +18,11 @@ import { Bot } from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
+const allowedBotHandlers: Set<string> = new Set(config.get<string[]>('application.chatBot.allowedHandlers') || []);
+interface RateLimitRecord { count: number; resetTime: number; }
+const rateLimitMap = new Map<string, RateLimitRecord>();
+const RATE_LIMIT_COUNT = config.get<number>('application.chatBot.rateLimitCount') || 10;
+const RATE_LIMIT_WINDOW_MS = config.get<number>('application.chatBot.rateLimitWindowMs') || 3600000;
 import { challenges } from '../data/datacache'
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
@@ -95,10 +100,22 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
   try {
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
-      // @ts-expect-error FIXME unclean usage of any type as index
-      if (response.handler && botUtils[response.handler]) {
+      // Verify handler is in the allowed whitelist and enforce rate limiting
+      if (response.handler && allowedBotHandlers.has(response.handler) && typeof botUtils[response.handler] === 'function') {
+        const key = `${user.id}-${response.handler}`;
+        const now = Date.now();
+        let record = rateLimitMap.get(key);
+        if (!record || now > record.resetTime) {
+          record = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+        } else if (record.count >= RATE_LIMIT_COUNT) {
+          res.status(429).json({ action: 'response', body: 'Too many requests. Please try again later.' });
+          return;
+        } else {
+          record.count++;
+        }
+        rateLimitMap.set(key, record);
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        res.status(200).json(await botUtils[response.handler](req.body.query, user));
       } else {
         res.status(200).json({
           action: 'response',
