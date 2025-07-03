@@ -31,7 +31,7 @@
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
-        context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        context.instance.role = 'customer'
         return context.continue
       })
     }
