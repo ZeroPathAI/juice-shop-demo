@@ -34,7 +34,7 @@ const registerWebsocketEvents = (server: any) => {
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
       if (i > -1) {
-        notifications.splice(i, 1)
+        // Server-side deletion disabled to prevent unauthorized removal (IDOR mitigation)
       }
     })
 
