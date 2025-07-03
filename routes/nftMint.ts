@@ -29,15 +29,18 @@ module.exports.nftMintListener = function nftMintListener () {
 }
 
 module.exports.walletNFTVerify = function walletNFTVerify () {
-  return (req: Request, res: Response) => {
+  return async (req: Request, res: Response) => {
     try {
       const metamaskAddress = req.body.walletAddress
-      if (addressesMinted.has(metamaskAddress)) {
-        addressesMinted.delete(metamaskAddress)
+      // Verify ownership on-chain instead of trusting the minted addresses cache
+      const provider2 = new ethers.WebSocketProvider('wss://eth-sepolia.g.alchemy.com/v2/FZDapFZSs1l6yhHW4VnQqsi18qSd-3GJ')
+      const contract2 = new ethers.Contract(nftAddress, nftABI, provider2)
+      const balance = await contract2.balanceOf(metamaskAddress)
+      if (balance.gt(0)) {
         challengeUtils.solveIf(challenges.nftMintChallenge, () => true)
         res.status(200).json({ success: true, message: 'Challenge successfully solved', status: challenges.nftMintChallenge })
       } else {
-        res.status(200).json({ success: false, message: 'Wallet did not mint the NFT', status: challenges.nftMintChallenge })
+        res.status(200).json({ success: false, message: 'Wallet does not own the NFT', status: challenges.nftMintChallenge })
       }
     } catch (error) {
       res.status(500).json(utils.getErrorMessage(error))
