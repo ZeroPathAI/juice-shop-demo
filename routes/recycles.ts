@@ -15,8 +15,8 @@ exports.getRecycleItem = () => (req: Request, res: Response) => {
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
-  }).catch((_: unknown) => {
-    return res.send('Error fetching recycled items. Please try again')
+  }).catch((error: unknown) => {
+    return res.status(500).send('Error fetching recycled items. Please try again')
   })
 }
 
