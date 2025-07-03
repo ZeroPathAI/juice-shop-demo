@@ -24,6 +24,11 @@ module.exports = function updateUserProfile () {
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
               req.body.username !== user.username
           })
+          // CSRF protection: enforce same-origin to prevent CSRF
+          const host = req.get('host') || ''
+          if (!req.headers.origin?.includes(host) && !req.headers.referer?.includes(host)) {
+            return next(new Error('Blocked illegal CSRF request from ' + req.socket.remoteAddress))
+          }
           void user.update({ username: req.body.username }).then((savedUser: UserModel) => {
             // @ts-expect-error FIXME some properties missing in savedUser
             savedUser = utils.queryResultToJson(savedUser)
