@@ -29,6 +29,7 @@ function captchas () {
     }
     const captchaInstance = CaptchaModel.build(captcha)
     await captchaInstance.save()
+    delete captcha.answer
     res.json(captcha)
   }
 }
