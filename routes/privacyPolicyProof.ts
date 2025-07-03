@@ -11,6 +11,11 @@ import challengeUtils = require('../lib/challengeUtils')
 
 module.exports = function servePrivacyPolicyProof () {
   return (req: Request, res: Response) => {
+    const referer = req.get('Referer') || '';
+    if (!referer.includes('/privacy-policy')) {
+      res.status(401).send('Unauthorized');
+      return;
+    }
     challengeUtils.solveIf(challenges.privacyPolicyProofChallenge, () => { return true })
     res.sendFile(path.resolve('frontend/dist/frontend/assets/private/thank-you.jpg'))
   }
