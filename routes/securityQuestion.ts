@@ -24,7 +24,7 @@ module.exports = function securityQuestion () {
           next(error)
         })
       } else {
-        res.json({})
+        res.json({ question: 'If the email exists, you will receive your security question.' })
       }
     }).catch((error: unknown) => {
       next(error)
