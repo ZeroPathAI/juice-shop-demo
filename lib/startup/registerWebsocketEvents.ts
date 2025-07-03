@@ -27,15 +27,15 @@ const registerWebsocketEvents = (server: any) => {
       firstConnectedSocket = socket.id
     }
 
+    const acknowledgedFlags = new Set<string>()
     notifications.forEach((notification: any) => {
-      socket.emit('challenge solved', notification)
+      if (!acknowledgedFlags.has(notification.flag)) {
+        socket.emit('challenge solved', notification)
+      }
     })
 
     socket.on('notification received', (data: any) => {
-      const i = notifications.findIndex(({ flag }: any) => flag === data)
-      if (i > -1) {
-        notifications.splice(i, 1)
-      }
+      acknowledgedFlags.add(data)
     })
 
     socket.on('verifyLocalXssChallenge', (data: any) => {
