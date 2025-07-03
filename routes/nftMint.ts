@@ -9,7 +9,7 @@ const addressesMinted = new Set()
 let isEventListenerCreated = false
 
 module.exports.nftMintListener = function nftMintListener () {
-  return (req: Request, res: Response) => {
+  return async (req: Request, res: Response) => {
     try {
       const provider = new ethers.WebSocketProvider('wss://eth-sepolia.g.alchemy.com/v2/FZDapFZSs1l6yhHW4VnQqsi18qSd-3GJ')
       const contract = new ethers.Contract(nftAddress, nftABI, provider)
@@ -32,8 +32,10 @@ module.exports.walletNFTVerify = function walletNFTVerify () {
   return (req: Request, res: Response) => {
     try {
       const metamaskAddress = req.body.walletAddress
-      if (addressesMinted.has(metamaskAddress)) {
-        addressesMinted.delete(metamaskAddress)
+      const provider = new ethers.WebSocketProvider('wss://eth-sepolia.g.alchemy.com/v2/FZDapFZSs1l6yhHW4VnQqsi18qSd-3GJ')
+      const contract = new ethers.Contract(nftAddress, nftABI, provider)
+      const balance = await contract.balanceOf(metamaskAddress)
+      if (balance.gt(0)) {
         challengeUtils.solveIf(challenges.nftMintChallenge, () => true)
         res.status(200).json({ success: true, message: 'Challenge successfully solved', status: challenges.nftMintChallenge })
       } else {
