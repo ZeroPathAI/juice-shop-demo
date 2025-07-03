@@ -9,13 +9,20 @@ import { BasketModel } from '../models/basket'
 const security = require('../lib/insecurity')
 
 module.exports = function applyCoupon () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
-    const id = params.id
-    let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
+  return (req: Request, res: Response, next: NextFunction) => {
+    const id = req.params.id
+    let coupon: string | undefined | null = req.params.coupon ? decodeURIComponent(req.params.coupon) : undefined
+    const currentUser = (req as any).user
+    if (!currentUser || !currentUser.id) {
+      return res.status(401).send('Authentication required.')
+    }
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
     BasketModel.findByPk(id).then((basket: BasketModel | null) => {
       if (basket != null) {
+        if (basket.userId !== currentUser.id) {
+          return res.status(403).send('Not authorized to modify this basket.')
+        }
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
             res.json({ discount })
