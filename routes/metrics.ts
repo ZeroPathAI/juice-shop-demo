@@ -65,6 +65,13 @@ exports.observeFileUploadMetricsMiddleware = function observeFileUploadMetricsMi
 
 exports.serveMetrics = function serveMetrics () {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization as string | undefined
+    const expectedToken = config.get<string>('metrics.authToken')
+    if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+      res.set('WWW-Authenticate', 'Bearer realm="metrics"')
+      res.status(401).end()
+      return
+    }
     challengeUtils.solveIf(challenges.exposedMetricsChallenge, () => {
       const userAgent = req.headers['user-agent'] ?? ''
       return !userAgent.includes('Prometheus')
