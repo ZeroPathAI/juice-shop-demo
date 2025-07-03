@@ -17,6 +17,10 @@ module.exports = function updateUserProfile () {
     const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
 
     if (loggedInUser) {
+      const originHeader = req.headers.origin ?? req.headers.referer ?? '';
+      if (!originHeader.includes(req.get('host') as string)) {
+        return next(new Error('Blocked potential CSRF attack'));
+      }
       UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
         if (user != null) {
           challengeUtils.solveIf(challenges.csrfChallenge, () => {
