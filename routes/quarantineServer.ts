@@ -7,7 +7,12 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveQuarantineFiles () {
-  return ({ params, query }: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { params, query } = req
+    if (!req.user) {
+      res.status(401)
+      return next(new Error('Unauthorized access to quarantine files'))
+    }
     const file = params.file
 
     if (!file.includes('/')) {
