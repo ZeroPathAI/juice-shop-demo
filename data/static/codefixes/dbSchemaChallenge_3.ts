@@ -1,4 +1,5 @@
 const injectionChars = /"|'|;|and|or|;|#/i;
+const { QueryTypes } = require('sequelize');
 
 module.exports = function searchProducts () {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -8,8 +9,11 @@ module.exports = function searchProducts () {
       res.status(400).send()
       return
     }
-    models.sequelize.query(`SELECT * FROM Products WHERE ((name LIKE '%${criteria}%' OR description LIKE '%${criteria}%') AND deletedAt IS NULL) ORDER BY name`)
-      .then(([products]: any) => {
+    models.sequelize.query(
+      "SELECT * FROM Products WHERE ((name LIKE :search OR description LIKE :search) AND deletedAt IS NULL) ORDER BY name",
+      { replacements: { search: `%${criteria}%` }, type: QueryTypes.SELECT }
+    )
+      .then((products: any) => {
         const dataString = JSON.stringify(products)
         for (let i = 0; i < products.length; i++) {
           products[i].name = req.__(products[i].name)
