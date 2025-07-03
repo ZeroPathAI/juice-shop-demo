@@ -10,6 +10,7 @@ import logger from '../lib/logger'
 import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
+import { URL } from 'url'
 const request = require('request')
 
 module.exports = function profileImageUrlUpload () {
@@ -19,8 +20,21 @@ module.exports = function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
-        const imageRequest = request
-          .get(url)
+        let imageRequest
+        try {
+          const parsedUrl = new URL(url)
+          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            throw new Error('Invalid protocol')
+          }
+          const host = parsedUrl.hostname
+          const disallowedHosts = ['localhost', '127.0.0.1', '::1']
+          if (disallowedHosts.includes(host) || host.match(/^10\./) || host.match(/^192\.168\./)) {
+            throw new Error('Disallowed host')
+          }
+          imageRequest = request.get(url)
+        } catch (err) {
+          return next(new Error('Invalid image URL'))
+        }
           .on('error', function (err: unknown) {
             UserModel.findByPk(loggedInUser.data.id).then(async (user: UserModel | null) => { return await user?.update({ profileImage: url }) }).catch((error: Error) => { next(error) })
             logger.warn(`Error retrieving user profile image: ${utils.getErrorMessage(err)}; using image link directly`)
