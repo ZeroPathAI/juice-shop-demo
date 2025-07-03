@@ -16,6 +16,12 @@ module.exports = function trackOrder () {
     challengeUtils.solveIf(challenges.reflectedXssChallenge, () => { return utils.contains(id, '<iframe src="javascript:alert(`xss`)">') })
     db.ordersCollection.find({ $where: `this.orderId === '${id}'` }).then((order: any) => {
       const result = utils.queryResultToJson(order)
+      // Ensure the authenticated user owns the order
+      const userId = (req as any).auth?.data?.id
+      result.data = result.data.filter((o: any) => o.userId === userId)
+      if (result.data.length === 0) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
       challengeUtils.solveIf(challenges.noSqlOrdersChallenge, () => { return result.data.length > 1 })
       if (result.data[0] === undefined) {
         result.data[0] = { orderId: id }
