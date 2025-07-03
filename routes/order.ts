@@ -135,20 +135,24 @@ module.exports = function placeOrder () {
 
           challengeUtils.solveIf(challenges.negativeOrderChallenge, () => { return totalPrice < 0 })
 
-          if (req.body.UserId) {
+          const user = security.authenticatedUsers.from(req)
+          const userId = user && user.data && (user.data.id ?? user.data._id)
+          if (userId) {
             if (req.body.orderDetails && req.body.orderDetails.paymentId === 'wallet') {
-              const wallet = await WalletModel.findOne({ where: { UserId: req.body.UserId } })
-              if ((wallet != null) && wallet.balance >= totalPrice) {
-                WalletModel.decrement({ balance: totalPrice }, { where: { UserId: req.body.UserId } }).catch((error: unknown) => {
+              const wallet = await WalletModel.findOne({ where: { UserId: userId } })
+              if (wallet && wallet.balance >= totalPrice) {
+                WalletModel.decrement({ balance: totalPrice }, { where: { UserId: userId } }).catch((error: unknown) => {
                   next(error)
                 })
               } else {
                 next(new Error('Insufficient wallet balance.'))
               }
             }
-            WalletModel.increment({ balance: totalPoints }, { where: { UserId: req.body.UserId } }).catch((error: unknown) => {
+            WalletModel.increment({ balance: totalPoints }, { where: { UserId: userId } }).catch((error: unknown) => {
               next(error)
             })
+          } else {
+            next(new Error('Unauthorized access.'))
           }
 
           db.ordersCollection.insert({
