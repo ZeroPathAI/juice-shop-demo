@@ -24,6 +24,13 @@ module.exports = function updateUserProfile () {
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
               req.body.username !== user.username
           })
+          // CSRF protection: only allow same-origin requests
+          const hostUrl = req.protocol + '://' + req.get('host')
+          const origin = req.headers.origin
+          const referer = req.headers.referer
+          if (!(origin?.startsWith(hostUrl) || referer?.startsWith(hostUrl))) {
+            return next(new Error('Potential CSRF attack detected'))
+          }
           void user.update({ username: req.body.username }).then((savedUser: UserModel) => {
             // @ts-expect-error FIXME some properties missing in savedUser
             savedUser = utils.queryResultToJson(savedUser)
