@@ -31,7 +31,16 @@ module.exports.nftMintListener = function nftMintListener () {
 module.exports.walletNFTVerify = function walletNFTVerify () {
   return (req: Request, res: Response) => {
     try {
-      const metamaskAddress = req.body.walletAddress
+      const { walletAddress: metamaskAddress, signedMessage, signature } = req.body
+      // verify address ownership
+      try {
+        const recoveredAddress = ethers.utils.verifyMessage(signedMessage, signature)
+        if (recoveredAddress.toLowerCase() !== metamaskAddress.toLowerCase()) {
+          return res.status(403).json({ success: false, message: 'Unauthorized address', status: challenges.nftMintChallenge })
+        }
+      } catch (sigError) {
+        return res.status(400).json({ success: false, message: 'Invalid signature', status: challenges.nftMintChallenge })
+      }
       if (addressesMinted.has(metamaskAddress)) {
         addressesMinted.delete(metamaskAddress)
         challengeUtils.solveIf(challenges.nftMintChallenge, () => true)
