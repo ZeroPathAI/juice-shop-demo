@@ -22,6 +22,23 @@ const registerWebsocketEvents = (server: any) => {
   globalWithSocketIO.io = io
 
   io.on('connection', (socket: any) => {
+    // Authenticate user
+    const token = socket.handshake.auth.token
+    if (!security.verify(token)) {
+      console.warn('Unauthorized websocket connection attempt')
+      socket.emit('error', 'Unauthorized')
+      socket.disconnect()
+      return
+    }
+    const user = security.authenticatedUsers.get(token)
+    if (!user) {
+      socket.emit('error', 'Unauthorized')
+      socket.disconnect()
+      return
+    }
+    socket.data.user = user
+    socket.data.rateLimit = {}
+
     if (firstConnectedSocket === null) {
       socket.emit('server started')
       firstConnectedSocket = socket.id
