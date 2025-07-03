@@ -69,6 +69,11 @@ exports.serveMetrics = function serveMetrics () {
       const userAgent = req.headers['user-agent'] ?? ''
       return !userAgent.includes('Prometheus')
     })
+    const clientIp = req.ip || req.connection?.remoteAddress
+    if (clientIp !== '127.0.0.1' && clientIp !== '::1') {
+      res.status(403).end('Access forbidden')
+      return
+    }
     res.set('Content-Type', register.contentType)
     res.end(await register.metrics())
   }
