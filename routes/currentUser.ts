@@ -25,7 +25,7 @@ module.exports = function retrieveLoggedInUser () {
         res.json(response)
       } else {
         challengeUtils.solveIf(challenges.emailLeakChallenge, () => { return true })
-        res.jsonp(response)
+        res.json(response)
       }
     }
   }
