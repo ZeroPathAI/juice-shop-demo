@@ -1,8 +1,10 @@
-/* Generated API endpoints */
+import { requireAuth, requireAdmin } from './auth'
+
+// Generated API endpoints
   finale.initialize({ app, sequelize })
 
   const autoModels = [
-    { name: 'User', exclude: ['password', 'totpSecret'], model: UserModel },
+    { name: 'User', exclude: ['password', 'totpSecret', 'isAdmin'], model: UserModel },
     { name: 'Product', exclude: [], model: ProductModel },
     { name: 'Feedback', exclude: [], model: FeedbackModel },
     { name: 'BasketItem', exclude: [], model: BasketItemModel },
@@ -27,6 +29,11 @@
 
     // create a wallet when a new user is registered using API
     if (name === 'User') {
+      // require authentication for user endpoints
+      resource.list.fetch.before(requireAuth)
+      resource.read.fetch.before(requireAuth)
+      // require admin for admin-sensitive operations
+      resource.create.fetch.before(requireAdmin)
       resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
@@ -34,4 +41,6 @@
         context.instance.role = context.instance.role ? context.instance.role : 'customer'
         return context.continue
       })
+      resource.update.fetch.before(requireAdmin)
+      resource.delete.fetch.before(requireAdmin)
     }
