@@ -12,6 +12,7 @@ import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 
 module.exports = function servePublicFiles () {
+  const baseDir = path.resolve('ftp')
   return ({ params, query }: Request, res: Response, next: NextFunction) => {
     const file = params.file
 
@@ -25,12 +26,18 @@ module.exports = function servePublicFiles () {
 
   function verify (file: string, res: Response, next: NextFunction) {
     file = security.cutOffPoisonNullByte(file)
-    if (file && (endsWithAllowlistedFileType(file) || (file === 'incident-support.kdbx'))) {
+    const normalized = path.normalize(file)
+    const filePath = path.resolve(baseDir, normalized)
+    if (!filePath.startsWith(baseDir + path.sep)) {
+      res.status(403)
+      return next(new Error('Invalid file path!'))
+    }
+    if (normalized && (endsWithAllowlistedFileType(normalized) || normalized === 'incident-support.kdbx')) {
 
       challengeUtils.solveIf(challenges.directoryListingChallenge, () => { return file.toLowerCase() === 'acquisitions.md' })
       verifySuccessfulPoisonNullByteExploit(file)
 
-      res.sendFile(path.resolve('ftp/', file))
+      res.sendFile(filePath)
     } else {
       res.status(403)
       next(new Error('Only .md and .pdf files are allowed!'))
