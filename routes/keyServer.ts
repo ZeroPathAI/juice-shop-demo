@@ -7,7 +7,13 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveKeyFiles () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { params } = req
+    if (!(req as any).user) {
+      res.status(401)
+      next(new Error('Authentication required'))
+      return
+    }
     const file = params.file
 
     if (!file.includes('/')) {
