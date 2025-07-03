@@ -20,6 +20,13 @@ import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
 import { challenges } from '../data/datacache'
 
+const ALLOWED_HANDLERS: Set<string> = new Set(Object.keys(botUtils))
+const handlerInvocationLog: Array<{ userId: number, handler: string, timestamp: number }> = []
+const handlerTimestamps: Map<string, number> = new Map()
+const DEFAULT_HANDLER_INTERVAL_MS = 1000 // minimum interval between handler calls
+const couponUseTimestamps: Map<number, number> = new Map()
+const COUPON_INTERVAL_MS = 24 * 60 * 60 * 1000 // 1 day limit for coupon generation
+
 let trainingFile = config.get<string>('application.chatBot.trainingData')
 let testCommand: string
 export let bot: Bot | null = null
@@ -95,16 +102,38 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
   try {
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
-      // @ts-expect-error FIXME unclean usage of any type as index
-      // Block direct invocation of the couponCode handler to prevent unlimited coupon generation
-      if (response.handler && botUtils[response.handler] && response.handler !== 'couponCode') {
-        // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+      const handlerName = response.handler
+      if (handlerName && ALLOWED_HANDLERS.has(handlerName)) {
+        logger.info(`Handler invoked: ${handlerName} by user ${user.id}`)
+        // rate limit all handlers per user
+        const invocationKey = `${user.id}:${handlerName}`
+        const lastInvocation = handlerTimestamps.get(invocationKey) ?? 0
+        if (Date.now() - lastInvocation < DEFAULT_HANDLER_INTERVAL_MS) {
+          res.status(429).json({ error: 'Handler invocation rate limit exceeded' })
+          return
+        }
+        handlerTimestamps.set(invocationKey, Date.now())
+        // special daily limit for couponCode
+        if (handlerName === 'couponCode') {
+          const now = Date.now()
+          const lastTime = couponUseTimestamps.get(user.id) ?? 0
+          if (now - lastTime < COUPON_INTERVAL_MS) {
+            res.status(429).json({ error: 'Coupon code generation rate limit exceeded' })
+            return
+          }
+          couponUseTimestamps.set(user.id, now)
+        }
+        try {
+          // @ts-expect-error unclean usage of any type as index
+          const result = await botUtils[handlerName](req.body.query, user)
+          res.status(200).json(result)
+          handlerInvocationLog.push({ userId: user.id, handler: handlerName, timestamp: Date.now() })
+        } catch (err) {
+          logger.error(`Error invoking handler ${handlerName}: ${utils.getErrorMessage(err)}`)
+          res.status(500).json({ error: 'Error executing handler' })
+        }
       } else {
-        res.status(200).json({
-          action: 'response',
-          body: config.get('application.chatBot.defaultResponse')
-        })
+        res.status(403).json({ error: 'Handler not allowed' })
       }
     } else {
       res.status(200).json(response)
