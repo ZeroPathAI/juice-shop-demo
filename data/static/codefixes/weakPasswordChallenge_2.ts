@@ -1,3 +1,6 @@
+import bcrypt from 'bcrypt'
+
+// TODO: Plan migration for existing MD5 password hashes.
 User.init(
       password: {
         type: DataTypes.STRING,
@@ -8,6 +11,9 @@ User.init(
           validatePasswordHasAtLeastOneLowerCaseChar(clearTextPassword)
           validatePasswordHasAtLeastTenChar(clearTextPassword)
           validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
-          this.setDataValue('password', security.hash(clearTextPassword))
+          const salt = bcrypt.genSaltSync(12)
+          // use bcrypt with key stretching
+          const hash = bcrypt.hashSync(clearTextPassword, salt)
+          this.setDataValue('password', hash)
         }
       },
