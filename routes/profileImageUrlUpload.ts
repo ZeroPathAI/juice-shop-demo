@@ -16,6 +16,18 @@ module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      // SSRF protection: only allow HTTP/S and prevent private/internal hosts
+      try {
+        const parsedUrl = new URL(url);
+        if (!['http:','https:'].includes(parsedUrl.protocol) ||
+            parsedUrl.hostname === 'localhost' ||
+            parsedUrl.hostname === '127.0.0.1' ||
+            parsedUrl.hostname.match(/^10\.\d+\.\d+\.\d+$|^192\.168\.\d+\.\d+$|^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/)) {
+          return next(new Error('Invalid image URL'));
+        }
+      } catch (e) {
+        return next(new Error('Invalid image URL'));
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
