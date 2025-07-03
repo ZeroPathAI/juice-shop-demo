@@ -39,15 +39,27 @@ const registerWebsocketEvents = (server: any) => {
     })
 
     socket.on('verifyLocalXssChallenge', (data: any) => {
+      if (!socket.request.user) {
+        socket.emit('unauthorized')
+        return
+      }
       challengeUtils.solveIf(challenges.localXssChallenge, () => { return utils.contains(data, '<iframe src="javascript:alert(`xss`)">') })
       challengeUtils.solveIf(challenges.xssBonusChallenge, () => { return utils.contains(data, config.get('challenges.xssBonusPayload')) })
     })
 
     socket.on('verifySvgInjectionChallenge', (data: any) => {
+      if (!socket.request.user) {
+        socket.emit('unauthorized')
+        return
+      }
       challengeUtils.solveIf(challenges.svgInjectionChallenge, () => { return data?.match(/.*\.\.\/\.\.\/\.\.[\w/-]*?\/redirect\?to=https?:\/\/placekitten.com\/(g\/)?[\d]+\/[\d]+.*/) && security.isRedirectAllowed(data) })
     })
 
     socket.on('verifyCloseNotificationsChallenge', (data: any) => {
+      if (!socket.request.user) {
+        socket.emit('unauthorized')
+        return
+      }
       challengeUtils.solveIf(challenges.closeNotificationsChallenge, () => { return Array.isArray(data) && data.length > 1 })
     })
   })
