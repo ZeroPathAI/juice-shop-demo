@@ -11,7 +11,17 @@ import challengeUtils = require('../lib/challengeUtils')
 
 module.exports = function serveEasterEgg () {
   return (req: Request, res: Response) => {
-    challengeUtils.solveIf(challenges.easterEggLevelTwoChallenge, () => { return true })
+    // Session validation
+    if (!req.session || !req.session.userId) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    // Verify previous challenge completion
+    if (!challengeUtils.isSolved(challenges.easterEggLevelOneChallenge)) {
+      return res.status(403).send('Forbidden')
+    }
+    // Solve level two challenge after passing validation
+    challengeUtils.solveIf(challenges.easterEggLevelTwoChallenge, () => true)
     res.sendFile(path.resolve('frontend/dist/frontend/assets/private/threejs-demo.html'))
   }
 }
