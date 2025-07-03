@@ -18,6 +18,10 @@ import { Bot } from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
+const handlerUsage: Record<string, {count: number; timestamp: number}> = {}
+const RATE_LIMIT_WINDOW = config.get<number>('application.chatBot.rateLimitWindowMs') || 60000
+const MAX_HANDLER_INVOCATIONS = config.get<number>('application.chatBot.maxInvocationsPerWindow') || 5
+const ALLOWED_HANDLERS: string[] = config.get<string[]>('application.chatBot.allowedHandlers') || []
 import { challenges } from '../data/datacache'
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
@@ -95,19 +99,39 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
   try {
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
-      // @ts-expect-error FIXME unclean usage of any type as index
-      if (response.handler && botUtils[response.handler]) {
-        // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
-      } else {
-        res.status(200).json({
-          action: 'response',
-          body: config.get('application.chatBot.defaultResponse')
-        })
+      const handlerName = response.handler
+      // input validation
+      if (typeof handlerName !== 'string' || !/^[a-zA-Z0-9_]+$/.test(handlerName)) {
+        logger.warn(`Invalid handler name: ${handlerName}`)
+        return res.status(400).json({ action: 'response', body: config.get('application.chatBot.defaultResponse') })
       }
-    } else {
-      res.status(200).json(response)
+      // whitelist authorization
+      if (!ALLOWED_HANDLERS.includes(handlerName)) {
+        logger.warn(`Unauthorized handler access attempt: ${handlerName} by user ${user.id}`)
+        return res.status(403).json({ action: 'response', body: config.get('application.chatBot.defaultResponse') })
+      }
+      // rate limiting
+      const key = `${user.id}-${handlerName}`
+      const now = Date.now()
+      const entry = handlerUsage[key]
+      if (!entry || now - entry.timestamp > RATE_LIMIT_WINDOW) {
+        handlerUsage[key] = { count: 1, timestamp: now }
+      } else if (entry.count >= MAX_HANDLER_INVOCATIONS) {
+        logger.warn(`Rate limit exceeded for handler: ${handlerName}, user: ${user.id}`)
+        return res.status(429).json({ action: 'response', body: config.get('application.chatBot.defaultResponse') })
+      } else {
+        entry.count++
+      }
+      try {
+        // @ts-expect-error dynamic invocation
+        const result = await botUtils[handlerName](req.body.query, user)
+        return res.status(200).json(result)
+      } catch (err) {
+        return next(err)
+      }
     }
+    // default response
+    return res.status(200).json(response)
   } catch (err) {
     try {
       await bot.respond(testCommand, `${user.id}`)
