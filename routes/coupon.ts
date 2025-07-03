@@ -14,8 +14,9 @@ module.exports = function applyCoupon () {
     let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
+    const user = security.authenticatedUsers.from(req)
     BasketModel.findByPk(id).then((basket: BasketModel | null) => {
-      if (basket != null) {
+      if (basket != null && basket.UserId === user.id) {
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
             res.json({ discount })
@@ -25,6 +26,8 @@ module.exports = function applyCoupon () {
         }).catch((error: Error) => {
           next(error)
         })
+      } else if (basket != null) {
+        res.status(403).send('Unauthorized access to basket')
       } else {
         next(new Error('Basket with id=' + id + ' does not exist.'))
       }
