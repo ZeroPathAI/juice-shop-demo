@@ -20,6 +20,24 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const token = body.token
+    if (!token) {
+      res.status(401).send(res.__('Password reset token missing.'))
+      return
+    }
+    {
+      const [payload, sig] = token.split('.')
+      if (!payload || !sig || security.hmac(payload) !== sig) {
+        res.status(401).send(res.__('Invalid password reset token.'))
+        return
+      }
+      const [emailInToken, expTimestampStr] = Buffer.from(payload, 'base64').toString('utf8').split(':')
+      const expTimestamp = parseInt(expTimestampStr, 10)
+      if (emailInToken !== email || Date.now() > expTimestamp) {
+        res.status(401).send(res.__('Invalid or expired password reset token.'))
+        return
+      }
+    }
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
