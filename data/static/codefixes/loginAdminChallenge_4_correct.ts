@@ -18,21 +18,18 @@ module.exports = function login () {
       { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
-        if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
-        } else if (user.data?.id) {
-          afterLogin(user, res, next)
-        } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+        // Always return generic 401 for missing/invalid credentials or 2FA failures
+        if (!user.data?.id) {
+          return res.status(401).send(res.__('Invalid email or password.'))
         }
+        // Handle 2FA if enabled
+        if (user.data.totpSecret) {
+          const totp = req.body.totp
+          if (!totp || !security.verifyTotp(totp, user.data.totpSecret)) {
+            return res.status(401).send(res.__('Invalid email or password.'))
+          }
+        }
+        afterLogin(user, res, next)
       }).catch((error: Error) => {
         next(error)
       })
