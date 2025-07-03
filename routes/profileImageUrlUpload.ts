@@ -4,6 +4,7 @@
  */
 
 import fs = require('fs')
+import { URL } from 'url'
 import { type Request, type Response, type NextFunction } from 'express'
 import logger from '../lib/logger'
 
@@ -16,6 +17,18 @@ module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      try {
+        const parsedUrl = new URL(url)
+        const hostname = parsedUrl.hostname
+        const protocol = parsedUrl.protocol
+        if (!['http:', 'https:'].includes(protocol) ||
+            hostname === 'localhost' || hostname === '127.0.0.1' ||
+            hostname.match(/^10\./) || hostname.match(/^192\.168\./) || hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
+          return res.status(400).send('Invalid image URL')
+        }
+      } catch (err) {
+        return res.status(400).send('Invalid image URL')
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
