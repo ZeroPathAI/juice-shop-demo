@@ -9,6 +9,9 @@ import { RecycleModel } from '../models/recycle'
 import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
+  if (!req.headers.authorization) {
+    return res.status(401).send(utils.queryResultToJson({ err: 'Unauthorized' }))
+  }
   RecycleModel.findAll({
     where: {
       id: JSON.parse(req.params.id)
