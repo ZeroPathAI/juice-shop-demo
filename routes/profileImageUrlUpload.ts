@@ -9,6 +9,7 @@ import logger from '../lib/logger'
 
 import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
+import { URL } from 'url'
 const security = require('../lib/insecurity')
 const request = require('request')
 
@@ -16,6 +17,14 @@ module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      try {
+        const parsedUrl = new URL(url)
+        if (!['http:', 'https:'].includes(parsedUrl.protocol) || parsedUrl.hostname === 'localhost' || /^[0-9.]+$/.test(parsedUrl.hostname)) {
+          throw new Error('Invalid URL')
+        }
+      } catch (err) {
+        return next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
