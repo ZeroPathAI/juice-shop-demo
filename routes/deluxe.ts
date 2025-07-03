@@ -39,6 +39,11 @@ module.exports.upgradeToDeluxe = function upgradeToDeluxe () {
         }
       }
 
+      const token = utils.jwtFrom(req)
+      if (!security.verify(token)) {
+        res.status(401).json({ status: 'error', error: 'Authentication required' })
+        return
+      }
       user.update({ role: security.roles.deluxe, deluxeToken: security.deluxeToken(user.email) })
         .then(user => {
           challengeUtils.solveIf(challenges.freeDeluxeChallenge, () => { return security.verify(utils.jwtFrom(req)) && req.body.paymentMode !== 'wallet' && req.body.paymentMode !== 'card' })
