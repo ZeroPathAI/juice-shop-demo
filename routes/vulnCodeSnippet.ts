@@ -11,6 +11,7 @@ import * as accuracy from '../lib/accuracy'
 import * as utils from '../lib/utils'
 
 const challengeUtils = require('../lib/challengeUtils')
+const security = require('../lib/security')
 
 interface SnippetRequestBody {
   challenge: string
@@ -39,6 +40,11 @@ export const retrieveCodeSnippet = async (challengeKey: string) => {
 }
 
 exports.serveCodeSnippet = () => async (req: Request<SnippetRequestBody, Record<string, unknown>, Record<string, unknown>>, res: Response, next: NextFunction) => {
+  const auth = security.authenticatedUsers.from(req)
+  if (!auth) {
+    res.status(401).json({ status: 'error', error: 'Authentication required' })
+    return
+  }
   try {
     const snippetData = await retrieveCodeSnippet(req.params.challenge)
     if (snippetData == null) {
