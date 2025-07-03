@@ -20,12 +20,17 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const resetToken = body.token
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
+    } else if (!resetToken) {
+      res.status(401).send(res.__('Reset token is required.'))
     } else if (!newPassword || newPassword === 'undefined') {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
+    } else if (!security.verifyResetToken(resetToken, email)) {
+      res.status(401).send(res.__('Invalid or expired reset token.'))
     } else {
       SecurityAnswerModel.findOne({
         include: [{
