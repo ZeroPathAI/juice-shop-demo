@@ -9,18 +9,14 @@ import { RecycleModel } from '../models/recycle'
 import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
-  if (!req.headers.authorization) {
-    const errMsg = { err: 'UNAUTHORIZED_ACCESS_ERROR' }
-    return res.status(401).send(utils.queryResultToJson(errMsg))
-  }
   RecycleModel.findAll({
     where: {
       id: JSON.parse(req.params.id)
     }
   }).then((Recycle) => {
     return res.send(utils.queryResultToJson(Recycle))
-  }).catch((_: unknown) => {
-    return res.send('Error fetching recycled items. Please try again')
+  }).catch((error: unknown) => {
+    return res.status(500).send('Error fetching recycled items. Please try again')
   })
 }
 
