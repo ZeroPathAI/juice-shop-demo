@@ -8,7 +8,7 @@ module.exports = function productReviews () {
     }
 
     db.reviewsCollection.update(
-      { _id: req.body.id },
+      { _id: req.body.id, author: user },
       { $set: { message: req.body.message } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
