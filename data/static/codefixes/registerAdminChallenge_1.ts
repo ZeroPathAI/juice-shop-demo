@@ -2,7 +2,7 @@
   finale.initialize({ app, sequelize })
 
   const autoModels = [
-    { name: 'User', exclude: ['password', 'totpSecret'], model: UserModel },
+    { name: 'User', exclude: ['password', 'totpSecret', 'isAdmin'], model: UserModel },
     { name: 'Product', exclude: [], model: ProductModel },
     { name: 'Feedback', exclude: [], model: FeedbackModel },
     { name: 'BasketItem', exclude: [], model: BasketItemModel },
