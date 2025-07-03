@@ -20,6 +20,12 @@ import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
 import { challenges } from '../data/datacache'
 
+// Rate limiting and handler whitelist for chatbot function handlers
+const handlerUsage: Map<string, { count: number; lastReset: number }> = new Map();
+const RATE_LIMIT = config.get<number>('application.chatBot.handlerRateLimit') || 10; // max calls per window
+const RATE_LIMIT_WINDOW = config.get<number>('application.chatBot.handlerRateLimitWindow') || 60 * 1000; // window in ms
+const allowedHandlers: string[] = config.get<string[]>('application.chatBot.allowedHandlers') || [];
+
 let trainingFile = config.get<string>('application.chatBot.trainingData')
 let testCommand: string
 export let bot: Bot | null = null
@@ -95,15 +101,32 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
   try {
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
-      // @ts-expect-error FIXME unclean usage of any type as index
-      if (response.handler && botUtils[response.handler]) {
+      const handler = response.handler as string
+      // Authorization: ensure handler is whitelisted and exists
+      if (!handler || !allowedHandlers.includes(handler) || typeof botUtils[handler] !== 'function') {
+        res.status(403).json({ error: 'Not authorized' })
+        return
+      }
+      // Rate limiting per user per handler
+      const usageKey = `${user.id}:${handler}`
+      const usage = handlerUsage.get(usageKey) ?? { count: 0, lastReset: Date.now() }
+      if (Date.now() - usage.lastReset > RATE_LIMIT_WINDOW) {
+        usage.count = 0
+        usage.lastReset = Date.now()
+      }
+      if (usage.count >= RATE_LIMIT) {
+        res.status(429).json({ error: 'Too many requests, please try later' })
+        return
+      }
+      usage.count++
+      handlerUsage.set(usageKey, usage)
+      try {
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
-      } else {
-        res.status(200).json({
-          action: 'response',
-          body: config.get('application.chatBot.defaultResponse')
-        })
+        const result = await botUtils[handler](req.body.query, user)
+        res.status(200).json(result)
+      } catch (handlerErr) {
+        logger.error(`Error in handler ${handler}: ${utils.getErrorMessage(handlerErr)}`)
+        res.status(500).json({ error: 'Handler execution failed' })
       }
     } else {
       res.status(200).json(response)
