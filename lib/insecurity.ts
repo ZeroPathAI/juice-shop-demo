@@ -5,6 +5,7 @@
 
 import fs from 'fs'
 import crypto from 'crypto'
+import { URL } from 'url'
 import { type Request, type Response, type NextFunction } from 'express'
 import { type UserModel } from 'models/user'
 import expressJwt from 'express-jwt'
@@ -133,11 +134,15 @@ export const redirectAllowlist = new Set([
 ])
 
 export const isRedirectAllowed = (url: string) => {
-  let allowed = false
-  for (const allowedUrl of redirectAllowlist) {
-    allowed = allowed || url.includes(allowedUrl) // vuln-code-snippet vuln-line redirectChallenge
+  try {
+    const destUrl = new URL(url)
+    return Array.from(redirectAllowlist).some((allowedUrl) => {
+      const allowedOrigin = new URL(allowedUrl).origin
+      return destUrl.origin === allowedOrigin
+    })
+  } catch {
+    return false
   }
-  return allowed
 }
 // vuln-code-snippet end redirectCryptoCurrencyChallenge redirectChallenge
 
