@@ -8,6 +8,7 @@ import fs = require('fs')
 import challengeUtils = require('../lib/challengeUtils')
 import { type NextFunction, type Request, type Response } from 'express'
 import path from 'path'
+import crypto from 'crypto'
 import * as utils from '../lib/utils'
 import { challenges } from '../data/datacache'
 
@@ -25,8 +26,15 @@ function handleZipFileUpload ({ file }: Request, res: Response, next: NextFuncti
   if (utils.endsWith(file?.originalname.toLowerCase(), '.zip')) {
     if (((file?.buffer) != null) && utils.isChallengeEnabled(challenges.fileWriteChallenge)) {
       const buffer = file.buffer
-      const filename = file.originalname.toLowerCase()
-      const tempFile = path.join(os.tmpdir(), filename)
+      // Validate extension and generate secure temporary filename
+      const originalName = file.originalname.toLowerCase()
+      const ext = path.extname(originalName)
+      if (ext !== '.zip') {
+        res.status(400).end()
+        return
+      }
+      const safeName = crypto.randomBytes(16).toString('hex') + ext
+      const tempFile = path.join(os.tmpdir(), safeName)
       fs.open(tempFile, 'w', function (err, fd) {
         if (err != null) { next(err) }
         fs.write(fd, buffer, 0, buffer.length, null, function (err) {
