@@ -25,13 +25,38 @@
       pagination: false
     })
 
-    // create a wallet when a new user is registered using API
+    // enforce authentication and RBAC for User endpoints
     if (name === 'User') {
-      resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
+      // Middleware to ensure authentication
+      const assertAuthenticated = (req: Request, res: Response, context: any) => {
+        if (!req.user) {
+          throw new Error('Authentication required')
+        }
+        return context.continue
+      }
+      // Middleware to ensure admin role
+      const assertAdmin = (req: Request, res: Response, context: any) => {
+        if (!req.user || req.user.role !== 'admin') {
+          throw new Error('Admin privileges required')
+        }
+        return context.continue
+      }
+      // Protect list and read endpoints
+      resource.list.fetch.before(assertAuthenticated)
+      resource.read.fetch.before(assertAuthenticated)
+      // Protect create endpoint with role validation and wallet creation
+      resource.create.send.before((req: Request, res: Response, context: { instance: any, continue: any }) => {
+        // override any client-supplied role/isAdmin for non-admin requests
+        const isAdminRequest = req.user && req.user.role === 'admin'
+        context.instance.role = isAdminRequest ? context.instance.role || 'customer' : 'customer'
+        context.instance.isAdmin = isAdminRequest ? Boolean(context.instance.isAdmin) : false
+        // create a wallet when a new user is registered
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
-        context.instance.role = context.instance.role ? context.instance.role : 'customer'
         return context.continue
       })
+      // Protect update and delete endpoints to admins only
+      resource.update.send.before(assertAdmin)
+      resource.delete.send.before(assertAdmin)
     }
