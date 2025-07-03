@@ -33,22 +33,47 @@ module.exports.restoreProgress = function restoreProgress () {
 }
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
-  return async ({ params }: Request, res: Response) => {
+  const restoreFindItRateLimitStore: Record<number, { count: number; firstTs: number }> = {}
+  return async (req: Request & { user?: { id: number } }, res: Response) => {
+    // Authentication
+    if (!req.user) {
+      return res.status(401).send('Authentication required.')
+    }
+    const { params } = req
     const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     const continueCodeFindIt = params.continueCode
-    const idsFindIt = hashids.decode(continueCodeFindIt)
-    if (idsFindIt.length > 0) {
-      for (const key in challenges) {
-        if (Object.prototype.hasOwnProperty.call(challenges, key)) {
-          if (idsFindIt.includes(challenges[key].id)) {
-            await challengeUtils.solveFindIt(key, true)
-          }
-        }
-      }
-      res.json({ data: idsFindIt.length + ' solved challenges have been restored.' })
-    } else {
-      res.status(404).send('Invalid continue code.')
+    const decoded = hashids.decode(continueCodeFindIt)
+    // Validation
+    if (decoded.length < 2) {
+      return res.status(400).send('Invalid continue code.')
     }
+    const [codeUserId, ...idsFindIt] = decoded
+    // Authorization
+    if (codeUserId !== req.user.id) {
+      return res.status(403).send('Forbidden.')
+    }
+    // Rate Limiting
+    const now = Date.now()
+    const record = restoreFindItRateLimitStore[req.user.id] || { count: 0, firstTs: now }
+    if (now - record.firstTs < 5 * 60 * 1000) {
+      record.count += 1
+      if (record.count > 10) {
+        return res.status(429).send('Too many requests.')
+      }
+    } else {
+      record.count = 1
+      record.firstTs = now
+    }
+    restoreFindItRateLimitStore[req.user.id] = record
+    // Logging
+    console.log(`[RestoreProgressFindIt] user ${req.user.id} restoring ${idsFindIt.length} challenges at ${new Date().toISOString()}`)
+    // Restore
+    for (const key in challenges) {
+      if (Object.prototype.hasOwnProperty.call(challenges, key) && idsFindIt.includes(challenges[key].id)) {
+        await challengeUtils.solveFindIt(key, true)
+      }
+    }
+    res.json({ data: idsFindIt.length + ' solved challenges have been restored.' })
   }
 }
 
