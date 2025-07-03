@@ -27,9 +27,15 @@ const registerWebsocketEvents = (server: any) => {
       firstConnectedSocket = socket.id
     }
 
-    notifications.forEach((notification: any) => {
-      socket.emit('challenge solved', notification)
-    })
+    const token = socket.handshake.auth?.token
+    try {
+      security.verify(token)
+      notifications.forEach((notification: any) => {
+        socket.emit('challenge solved', notification)
+      })
+    } catch (err) {
+      socket.disconnect(true)
+    }
 
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
