@@ -13,6 +13,7 @@ import config from 'config'
 import { challenges } from '../data/datacache'
 
 import * as utils from '../lib/utils'
+import { randomBytes } from 'crypto'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
 
@@ -40,10 +41,7 @@ module.exports = function login () {
           res.status(401).json({
             status: 'totp_token_required',
             data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
+              tmpToken: randomBytes(16).toString('hex')
             }
           })
         } else if (user.data?.id) {
