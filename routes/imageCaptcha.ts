@@ -21,7 +21,7 @@ function imageCaptchas () {
     }
     const imageCaptchaInstance = ImageCaptchaModel.build(imageCaptcha)
     imageCaptchaInstance.save().then(() => {
-      res.json(imageCaptcha)
+      res.json({ image: captcha.data })
     }).catch(() => {
       res.status(400).send(res.__('Unable to create CAPTCHA. Please try again.'))
     })
