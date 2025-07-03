@@ -29,7 +29,8 @@ function captchas () {
     }
     const captchaInstance = CaptchaModel.build(captcha)
     await captchaInstance.save()
-    res.json(captcha)
+    // Do not expose the answer in the response
+    res.json({ captchaId, captcha: expression })
   }
 }
 
