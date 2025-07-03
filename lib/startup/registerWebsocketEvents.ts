@@ -22,6 +22,16 @@ const registerWebsocketEvents = (server: any) => {
   globalWithSocketIO.io = io
 
   io.on('connection', (socket: any) => {
+    // require authentication via JWT token
+    const { token } = socket.handshake.auth || {};
+    try {
+      security.verify(token);
+      security.decode(token);
+    } catch (err) {
+      socket.emit('unauthorized');
+      socket.disconnect();
+      return;
+    }
     if (firstConnectedSocket === null) {
       socket.emit('server started')
       firstConnectedSocket = socket.id
