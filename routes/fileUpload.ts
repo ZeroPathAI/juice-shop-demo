@@ -73,16 +73,32 @@ function handleXmlUpload ({ file }: Request, res: Response, next: NextFunction) 
   if (utils.endsWith(file?.originalname.toLowerCase(), '.xml')) {
     challengeUtils.solveIf(challenges.deprecatedInterfaceChallenge, () => { return true })
     if (((file?.buffer) != null) && utils.isChallengeEnabled(challenges.deprecatedInterfaceChallenge)) { // XXE attacks in Docker/Heroku containers regularly cause "segfault" crashes
+      // Validate content type header
+      if (!file.mimetype?.includes('xml')) {
+        res.status(415)
+        return next(new Error('Unsupported Media Type'))
+      }
       const data = file.buffer.toString()
       try {
-        const sandbox = { libxml, data }
-        vm.createContext(sandbox)
-        const xmlDoc = vm.runInContext('libxml.parseXml(data, { noblanks: true, noent: true, nocdata: true })', sandbox, { timeout: 2000 })
-        const xmlString = xmlDoc.toString(false)
-        challengeUtils.solveIf(challenges.xxeFileDisclosureChallenge, () => { return (utils.matchesEtcPasswdFile(xmlString) || utils.matchesSystemIniFile(xmlString)) })
+        // Basic input validation: disallow entity declarations
+        if (data.includes('<!ENTITY')) {
+          res.status(400)
+          return next(new Error('XML contains disallowed entity declarations'))
+        }
+        // Parse XML without resolving external entities
+        const xmlDoc = libxml.parseXml(data, { noblanks: true, noent: false, nocdata: true, dtdload: false, dtdattr: false })
+        // Whitelist allowed elements
+        const allowedTags = ['complaints', 'complaint']
+        const nodes = xmlDoc.find('//*')
+        for (const node of nodes) {
+          if (!allowedTags.includes(node.name())) {
+            res.status(400)
+            return next(new Error('XML contains disallowed elements'))
+          }
+        }
         res.status(410)
-        next(new Error('B2B customer complaints via file upload have been deprecated for security reasons: ' + utils.trunc(xmlString, 400) + ' (' + file.originalname + ')'))
-      } catch (err: any) { // TODO: Remove any
+        return next(new Error(`B2B customer complaints via file upload have been deprecated for security reasons (${file.originalname})`))
+      } catch (err) {
         if (utils.contains(err.message, 'Script execution timed out')) {
           if (challengeUtils.notSolved(challenges.xxeDosChallenge)) {
             challengeUtils.solve(challenges.xxeDosChallenge)
