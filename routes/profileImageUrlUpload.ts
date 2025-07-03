@@ -17,6 +17,19 @@ module.exports = function profileImageUrlUpload () {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
+      // Validate user-supplied URL to prevent SSRF
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(url)
+      } catch {
+        return next(new Error('Invalid URL'))
+      }
+      const hostname = parsedUrl.hostname
+      // Disallow private or internal hosts
+      if (!['http:', 'https:'].includes(parsedUrl.protocol) ||
+          hostname.match(/^(localhost|127\.0\.0\.1|::1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/)) {
+        return next(new Error('URL not allowed'))
+      }
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
         const imageRequest = request
