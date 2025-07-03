@@ -18,6 +18,12 @@ module.exports = function retrieveBasket () {
     BasketModel.findOne({ where: { id }, include: [{ model: ProductModel, paranoid: false, as: 'Products' }] })
       .then((basket: BasketModel | null) => {
         /* jshint eqeqeq:false */
+        const user = security.authenticatedUsers.from(req)
+        if (!user || basket.userId?.toString() !== user.bid) {
+          res.status(403).send('Forbidden')
+          return
+        }
+
         challengeUtils.solveIf(challenges.basketAccessChallenge, () => {
           const user = security.authenticatedUsers.from(req)
           return user && id && id !== 'undefined' && id !== 'null' && id !== 'NaN' && user.bid && user.bid != id // eslint-disable-line eqeqeq
