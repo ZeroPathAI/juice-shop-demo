@@ -6,6 +6,7 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import { WalletModel } from '../models/wallet'
 import { CardModel } from '../models/card'
+import { security } from '../lib/security'
 
 module.exports.getWalletBalance = function getWalletBalance () {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -20,10 +21,16 @@ module.exports.getWalletBalance = function getWalletBalance () {
 
 module.exports.addWalletBalance = function addWalletBalance () {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const auth = security.authenticatedUsers.from(req)
+    if (!auth) {
+      res.status(401).json({ status: 'error', message: 'Unauthorized.' })
+      return
+    }
+    const userId = auth.data.id
     const cardId = req.body.paymentId
-    const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: req.body.UserId } }) : null
+    const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: userId } }) : null
     if (card != null) {
-      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: req.body.UserId } }).then(() => {
+      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: userId } }).then(() => {
         res.status(200).json({ status: 'success', data: req.body.balance })
       }).catch(() => {
         res.status(404).json({ status: 'error' })
