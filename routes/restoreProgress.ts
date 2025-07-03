@@ -53,7 +53,11 @@ module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
 }
 
 module.exports.restoreProgressFixIt = function restoreProgressFixIt () {
-  const hashids = new Hashids('yet another salt for the fixIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
+  const salt = process.env.FIXIT_CONTINUE_CODE_SALT
+  if (!salt) {
+    throw new Error('Missing FIXIT_CONTINUE_CODE_SALT environment variable')
+  }
+  const hashids = new Hashids(salt, 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
   return async ({ params }: Request, res: Response) => {
     const continueCodeFixIt = params.continueCode
     const idsFixIt = hashids.decode(continueCodeFixIt)
