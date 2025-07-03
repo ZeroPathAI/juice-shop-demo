@@ -24,7 +24,7 @@ module.exports = function securityQuestion () {
           next(error)
         })
       } else {
-        res.json({})
+        res.json({ question: null })
       }
     }).catch((error: unknown) => {
       next(error)
