@@ -71,6 +71,9 @@ module.exports.quantityCheckBeforeBasketItemUpdate = function quantityCheckBefor
         if (item == null) {
           throw new Error('No such item found!')
         }
+        if (user && item.BasketId !== user.bid) {
+          return res.status(401).json({ error: 'Invalid BasketId' })
+        }
         void quantityCheck(req, res, next, item.ProductId, req.body.quantity)
       } else {
         next()
