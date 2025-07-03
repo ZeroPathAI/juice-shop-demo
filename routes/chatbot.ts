@@ -24,6 +24,14 @@ let trainingFile = config.get<string>('application.chatBot.trainingData')
 let testCommand: string
 export let bot: Bot | null = null
 
+// Whitelist of allowed botUtils handlers
+const ALLOWED_HANDLERS: Set<string> = new Set(config.get<string[]>('application.chatBot.allowedHandlers'))
+
+// Rate limiting settings (per user per handler)
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
+const RATE_LIMIT_MAX = 5
+const handlerRateLimits = new Map<string, { count: number; lastReset: number }>()
+
 export async function initialize () {
   if (utils.isUrl(trainingFile)) {
     const file = utils.extractFilename(trainingFile)
@@ -97,8 +105,31 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
     if (response.action === 'function') {
       // @ts-expect-error FIXME unclean usage of any type as index
       if (response.handler && botUtils[response.handler]) {
+        const handlerName = response.handler as string
+        // authorization via whitelist
+        if (!ALLOWED_HANDLERS.has(handlerName)) {
+          logger.warn(`User ${user.id} attempted unauthorized handler ${handlerName}`)
+          return res.status(403).json({ error: 'Unauthorized function' })
+        }
+        // rate limiting
+        const key = `${user.id}:${handlerName}`
+        const now = Date.now()
+        let record = handlerRateLimits.get(key)
+        if (!record || now - record.lastReset > RATE_LIMIT_WINDOW) {
+          record = { count: 0, lastReset: now }
+          handlerRateLimits.set(key, record)
+        }
+        if (record.count >= RATE_LIMIT_MAX) {
+          logger.warn(`Rate limit exceeded for handler ${handlerName} by user ${user.id}`)
+          return res.status(429).json({ error: 'Too many requests' })
+        }
+        record.count++
+        // TODO: granular permission checks can be implemented here
+        // invoke handler
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        const result = await botUtils[handlerName](req.body.query, user)
+        logger.info(`Handler ${handlerName} invoked by user ${user.id}`)
+        return res.status(200).json(result)
       } else {
         res.status(200).json({
           action: 'response',
