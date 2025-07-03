@@ -6,6 +6,7 @@
 import challengeUtils = require('../lib/challengeUtils')
 import { type Request, type Response, type NextFunction } from 'express'
 import * as db from '../data/mongodb'
+import { ObjectId } from 'mongodb'
 import { challenges } from '../data/datacache'
 
 const security = require('../lib/insecurity')
@@ -14,10 +15,15 @@ const security = require('../lib/insecurity')
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req) // vuln-code-snippet vuln-line forgedReviewChallenge
-    db.reviewsCollection.update( // vuln-code-snippet neutral-line forgedReviewChallenge
-      { _id: req.body.id }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
-      { $set: { message: req.body.message } },
-      { multi: true } // vuln-code-snippet vuln-line noSqlReviewsChallenge
+    const id = req.body.id;
+    const message = req.body.message;
+    if (typeof id !== 'string' || !ObjectId.isValid(id) || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Invalid input' });
+    }
+    db.reviewsCollection.update(
+      { _id: new ObjectId(id) },
+      { $set: { message } },
+      { multi: true }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         challengeUtils.solveIf(challenges.noSqlReviewsChallenge, () => { return result.modified > 1 }) // vuln-code-snippet hide-line
