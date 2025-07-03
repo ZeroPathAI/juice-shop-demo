@@ -58,7 +58,7 @@ module.exports = function dataExport () {
         })
       })
 
-      db.ordersCollection.find({ email: updatedEmail }).then((orders: Array<{
+      db.ordersCollection.find({ userId: loggedInUser.data.id }).then((orders: Array<{
         orderId: string
         totalPrice: number
         products: ProductModel[]
@@ -77,7 +77,7 @@ module.exports = function dataExport () {
           })
         }
 
-        db.reviewsCollection.find({ author: email }).then((reviews: Array<{
+        db.reviewsCollection.find({ userId: loggedInUser.data.id }).then((reviews: Array<{
           message: string
           author: string
           product: number
