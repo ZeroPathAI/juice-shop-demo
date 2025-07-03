@@ -13,6 +13,11 @@ module.exports = function trackOrder () {
   return (req: Request, res: Response) => {
     const id = !utils.isChallengeEnabled(challenges.reflectedXssChallenge) ? String(req.params.id).replace(/[^\w-]+/g, '') : req.params.id
 
+    // Enforce authentication
+    if (!req.headers.authorization) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
+
     challengeUtils.solveIf(challenges.reflectedXssChallenge, () => { return utils.contains(id, '<iframe src="javascript:alert(`xss`)">') })
     db.ordersCollection.find({ $where: `this.orderId === '${id}'` }).then((order: any) => {
       const result = utils.queryResultToJson(order)
