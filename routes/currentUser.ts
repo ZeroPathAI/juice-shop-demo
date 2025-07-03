@@ -21,11 +21,14 @@ module.exports = function retrieveLoggedInUser () {
       user = undefined
     } finally {
       const response = { user: { id: (user?.data ? user.data.id : undefined), email: (user?.data ? user.data.email : undefined), lastLoginIp: (user?.data ? user.data.lastLoginIp : undefined), profileImage: (user?.data ? user.data.profileImage : undefined) } }
-      if (req.query.callback === undefined) {
+      const callback = req.query.callback
+      if (callback === undefined) {
         res.json(response)
-      } else {
-        challengeUtils.solveIf(challenges.emailLeakChallenge, () => { return true })
+      } else if (/^[A-Za-z0-9_]+$/.test(callback)) {
+        challengeUtils.solveIf(challenges.emailLeakChallenge, () => true)
         res.jsonp(response)
+      } else {
+        res.status(400).json({ error: 'Invalid callback' })
       }
     }
   }
