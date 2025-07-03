@@ -33,7 +33,8 @@ module.exports.restoreProgress = function restoreProgress () {
 }
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
-  return async ({ params }: Request, res: Response) => {
+  return async (req: Request & { session?: any }, res: Response) => {
+    const { params } = req
     const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     const continueCodeFindIt = params.continueCode
     const idsFindIt = hashids.decode(continueCodeFindIt)
@@ -56,6 +57,11 @@ module.exports.restoreProgressFixIt = function restoreProgressFixIt () {
   const hashids = new Hashids('yet another salt for the fixIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
   return async ({ params }: Request, res: Response) => {
     const continueCodeFixIt = params.continueCode
+    // Verify that this continue code was issued and is valid for this session
+    if (!(req.session?.continueCodes || []).includes(continueCodeFixIt)) {
+      res.status(403).send('Invalid or expired continue code.')
+      return
+    }
     const idsFixIt = hashids.decode(continueCodeFixIt)
     if (idsFixIt.length > 0) {
       for (const key in challenges) {
