@@ -15,6 +15,11 @@ const security = require('../lib/insecurity')
 module.exports = function retrieveBasket () {
   return (req: Request, res: Response, next: NextFunction) => {
     const id = req.params.id
+    const user = security.authenticatedUsers.from(req)
+    if (!user || user.bid != id) {
+      res.status(403).send('Forbidden')
+      return
+    }
     BasketModel.findOne({ where: { id }, include: [{ model: ProductModel, paranoid: false, as: 'Products' }] })
       .then((basket: BasketModel | null) => {
         /* jshint eqeqeq:false */
