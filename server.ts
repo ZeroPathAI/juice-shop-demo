@@ -327,7 +327,7 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   app.use('/rest/user/reset-password', new RateLimit({
     windowMs: 5 * 60 * 1000,
     max: 100,
-    keyGenerator ({ headers, ip }: { headers: any, ip: any }) { return headers['X-Forwarded-For'] ?? ip } // vuln-code-snippet vuln-line resetPasswordMortyChallenge
+    keyGenerator (req: Request) { return req.socket.remoteAddress || req.ip } // fixed: use socket.remoteAddress to avoid header spoofing
   }))
   // vuln-code-snippet end resetPasswordMortyChallenge
 
