@@ -19,8 +19,24 @@ module.exports = function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
+        // SSRF mitigation: validate URL
+        let validatedUrl: string
+        try {
+          const parsedUrl = new URL(url)
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Invalid protocol')
+          const hostname = parsedUrl.hostname.toLowerCase()
+          if (
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname.match(/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/)
+          ) throw new Error('Disallowed hostname')
+          validatedUrl = parsedUrl.toString()
+        } catch (err) {
+          next(new Error('Invalid image URL'))
+          return
+        }
         const imageRequest = request
-          .get(url)
+          .get(validatedUrl)
           .on('error', function (err: unknown) {
             UserModel.findByPk(loggedInUser.data.id).then(async (user: UserModel | null) => { return await user?.update({ profileImage: url }) }).catch((error: Error) => { next(error) })
             logger.warn(`Error retrieving user profile image: ${utils.getErrorMessage(err)}; using image link directly`)
