@@ -7,8 +7,13 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveKeyFiles () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
-    const file = params.file
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Authentication required
+    if (!(req as any).user) {
+      res.sendStatus(401)
+      return
+    }
+    const file = req.params.file
 
     if (!file.includes('/')) {
       res.sendFile(path.resolve('encryptionkeys/', file))
