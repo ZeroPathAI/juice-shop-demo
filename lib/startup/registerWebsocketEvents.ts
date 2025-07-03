@@ -21,6 +21,16 @@ const registerWebsocketEvents = (server: any) => {
   // @ts-expect-error FIXME Type safety issue when setting global socket-io object
   globalWithSocketIO.io = io
 
+  // Reject unauthenticated connections
+  io.use((socket: any, next: any) => {
+    const cookie = socket.request.headers.cookie as string
+    if (cookie && cookie.includes('token=')) {
+      next()
+    } else {
+      next(new Error('Unauthorized'))
+    }
+  })
+
   io.on('connection', (socket: any) => {
     if (firstConnectedSocket === null) {
       socket.emit('server started')
