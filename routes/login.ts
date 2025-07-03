@@ -38,13 +38,7 @@ module.exports = function login () {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
           res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
+            status: 'totp_token_required'
           })
         } else if (user.data?.id) {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
