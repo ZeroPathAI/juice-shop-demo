@@ -3,6 +3,7 @@ import * as accuracy from '../lib/accuracy'
 
 const challengeUtils = require('../lib/challengeUtils')
 const fs = require('fs')
+const path = require('path')
 const yaml = require('js-yaml')
 
 const FixesDir = 'data/static/codefixes'
@@ -67,7 +68,8 @@ export const serveCodeFixes = () => (req: Request<FixesRequestParams, Record<str
 }
 
 export const checkCorrectFix = () => async (req: Request<Record<string, unknown>, Record<string, unknown>, VerdictRequestBody>, res: Response, next: NextFunction) => {
-  const key = req.body.key
+  const rawKey = req.body.key
+  const key = path.basename(rawKey)
   const selectedFix = req.body.selectedFix
   const fixData = readFixes(key)
   if (fixData.fixes.length === 0) {
