@@ -9,6 +9,7 @@ import logger from '../lib/logger'
 
 import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
+import { URL } from 'url'
 const security = require('../lib/insecurity')
 const request = require('request')
 
@@ -17,6 +18,19 @@ module.exports = function profileImageUrlUpload () {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
+      try {
+        const parsedUrl = new URL(url)
+        if ((parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') ||
+            ['localhost', '127.0.0.1'].includes(parsedUrl.hostname) ||
+            /^10\./.test(parsedUrl.hostname) ||
+            /^192\.168\./.test(parsedUrl.hostname) ||
+            /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(parsedUrl.hostname)
+        ) {
+          return next(new Error('Invalid image URL'))
+        }
+      } catch (e) {
+        return next(new Error('Invalid image URL'))
+      }
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
         const imageRequest = request
