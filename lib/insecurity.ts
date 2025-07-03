@@ -51,7 +51,16 @@ export const cutOffPoisonNullByte = (str: string) => {
   return str
 }
 
-export const isAuthorized = () => expressJwt(({ secret: publicKey }) as any)
+export const isAuthorized = () => [
+  expressJwt({ secret: publicKey, algorithms: ['RS256'] } as any),
+  (req: Request, res: Response, next: NextFunction) => {
+    // Block temporary 2FA tokens from accessing protected endpoints
+    if ((req as any).user?.tmp) {
+      return res.status(403).json({ status: 'error', message: 'Second factor required' })
+    }
+    next()
+  }
+]
 export const denyAll = () => expressJwt({ secret: '' + Math.random() } as any)
 export const authorize = (user = {}) => jwt.sign(user, privateKey, { expiresIn: '6h', algorithm: 'RS256' })
 export const verify = (token: string) => token ? (jws.verify as ((token: string, secret: string) => boolean))(token, publicKey) : false
