@@ -19,6 +19,10 @@ module.exports = function updateUserProfile () {
     if (loggedInUser) {
       UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
         if (user != null) {
+          const expectedOrigin = req.protocol + '://' + req.get('host')
+          if (req.headers.origin !== expectedOrigin) {
+            return next(new Error('Invalid request origin'))
+          }
           challengeUtils.solveIf(challenges.csrfChallenge, () => {
             return ((req.headers.origin?.includes('://htmledit.squarefree.com')) ??
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
