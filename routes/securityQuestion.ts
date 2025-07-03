@@ -16,16 +16,9 @@ module.exports = function securityQuestion () {
         model: UserModel,
         where: { email: email?.toString() }
       }]
-    }).then((answer: SecurityAnswerModel | null) => {
-      if (answer != null) {
-        SecurityQuestionModel.findByPk(answer.SecurityQuestionId).then((question: SecurityQuestionModel | null) => {
-          res.json({ question })
-        }).catch((error: Error) => {
-          next(error)
-        })
-      } else {
-        res.json({})
-      }
+    }).then(() => {
+      // Always return a generic response to prevent email enumeration
+      res.json({})
     }).catch((error: unknown) => {
       next(error)
     })
