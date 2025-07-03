@@ -9,6 +9,12 @@ import { challenges } from '../data/datacache'
 
 const challengeUtils = require('../lib/challengeUtils')
 
+// Authentication, authorization, rate limiting and logging for restoreProgressFindIt
+interface RateLimitEntry { count: number; firstRequest: number }
+const findItRateLimitMap = new Map<number, RateLimitEntry>()
+const FINDIT_WINDOW_MS = 60 * 1000
+const FINDIT_MAX_REQUESTS = 5
+
 module.exports.restoreProgress = function restoreProgress () {
   return ({ params }: Request, res: Response) => {
     const hashids = new Hashids('this is my salt', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
@@ -33,11 +39,41 @@ module.exports.restoreProgress = function restoreProgress () {
 }
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
-  return async ({ params }: Request, res: Response) => {
+  return async (req: Request & { user?: { id: number } }, res: Response) => {
+    // Authentication
+    if (!req.user) {
+      console.warn(`[restoreProgressFindIt] Unauthenticated access attempt`)
+      return res.status(401).json({ message: 'Authentication required.' })
+    }
+    // Rate limiting
+    const userId = req.user.id
+    const now = Date.now()
+    const entry = findItRateLimitMap.get(userId)
+    if (entry) {
+      if (now - entry.firstRequest < FINDIT_WINDOW_MS) {
+        if (entry.count >= FINDIT_MAX_REQUESTS) {
+          console.warn(`[restoreProgressFindIt] Rate limit exceeded for user ${userId}`)
+          return res.status(429).json({ message: 'Too many requests. Please try again later.' })
+        }
+        entry.count++
+      } else {
+        entry.count = 1
+        entry.firstRequest = now
+      }
+    } else {
+      findItRateLimitMap.set(userId, { count: 1, firstRequest: now })
+    }
     const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-    const continueCodeFindIt = params.continueCode
+    const continueCodeFindIt = req.params.continueCode
+    console.info(`[restoreProgressFindIt] User ${userId} attempts restore with code ${continueCodeFindIt}`)
     const idsFindIt = hashids.decode(continueCodeFindIt)
-    if (idsFindIt.length > 0) {
+    // Verify code belongs to user: first element must be user ID
+    if (idsFindIt[0] !== userId) {
+      console.warn(`[restoreProgressFindIt] User ${userId} provided invalid code ${continueCodeFindIt}`)
+      return res.status(403).json({ message: 'Forbidden. Code does not belong to user.' })
+    }
+    const challengeIds = idsFindIt.slice(1)
+    if (challengeIds.length > 0) {
       for (const key in challenges) {
         if (Object.prototype.hasOwnProperty.call(challenges, key)) {
           if (idsFindIt.includes(challenges[key].id)) {
@@ -45,7 +81,8 @@ module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
           }
         }
       }
-      res.json({ data: idsFindIt.length + ' solved challenges have been restored.' })
+      console.info(`[restoreProgressFindIt] User ${userId} restored ${challengeIds.length} challenges`)
+      res.json({ data: challengeIds.length + ' solved challenges have been restored.' })
     } else {
       res.status(404).send('Invalid continue code.')
     }
