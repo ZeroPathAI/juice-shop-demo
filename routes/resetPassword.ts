@@ -11,6 +11,7 @@ import { UserModel } from '../models/user'
 import { challenges } from '../data/datacache'
 
 import challengeUtils = require('../lib/challengeUtils')
+import jwt from 'jsonwebtoken'
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
@@ -29,26 +30,37 @@ module.exports = function resetPassword () {
     } else if (!body.token) {
       res.status(401).send(res.__('Missing password reset token.'));
     } else {
+      // Verify reset token
+      try {
+        const payload = jwt.verify(body.token, config.get('resetPasswordSecret')) as { email: string, iat: number, exp: number }
+        if (payload.email !== email) {
+          return res.status(401).send(res.__('Invalid or expired password reset token.'));
+        }
+      } catch (err) {
+        return res.status(401).send(res.__('Invalid or expired password reset token.'));
+      }
       SecurityAnswerModel.findOne({
         include: [{
           model: UserModel,
           where: { email }
         }]
       }).then((data: SecurityAnswerModel | null) => {
-        if ((data != null) && security.hmac(answer) === data.answer) {
-          UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
-            user?.update({ password: newPassword }).then((user: UserModel) => {
-              verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
-            }).catch((error: unknown) => {
-              next(error)
-            })
+        // Secondary factor: verify security answer, primary via valid token
+        UserModel.findOne({ where: { email } }).then((user: UserModel | null) => {
+          if (!user) {
+            return res.status(404).send(res.__('User not found.'))
+          }
+          if (data && answer && security.hmac(answer) === data.answer) {
+            verifySecurityAnswerChallenges(user, answer)
+          }
+          user.update({ password: newPassword }).then((updatedUser: UserModel) => {
+            res.json({ user: updatedUser })
           }).catch((error: unknown) => {
             next(error)
           })
-        } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
-        }
+        }).catch((error: unknown) => {
+          next(error)
+        })
       }).catch((error: unknown) => {
         next(error)
       })
