@@ -16,6 +16,10 @@ module.exports = function applyCoupon () {
     coupon = discount ? coupon : null
     BasketModel.findByPk(id).then((basket: BasketModel | null) => {
       if (basket != null) {
+        if (basket.userId !== (req as any).auth.data.id) {
+          res.status(403).send('Access forbidden.')
+          return
+        }
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
             res.json({ discount })
