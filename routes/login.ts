@@ -42,7 +42,8 @@ module.exports = function login () {
             data: {
               tmpToken: security.authorize({
                 userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
+                type: 'password_valid_needs_second_factor_token',
+                tmp: true
               })
             }
           })
