@@ -27,9 +27,12 @@ const registerWebsocketEvents = (server: any) => {
       firstConnectedSocket = socket.id
     }
 
-    notifications.forEach((notification: any) => {
-      socket.emit('challenge solved', notification)
-    })
+    // Only emit existing notifications to authenticated users
+    if (socket.request.headers.cookie && (socket.request.headers.cookie as string).includes('token=')) {
+      notifications.forEach((notification: any) => {
+        socket.emit('challenge solved', notification)
+      })
+    }
 
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
