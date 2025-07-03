@@ -44,11 +44,44 @@ const registerWebsocketEvents = (server: any) => {
     })
 
     socket.on('verifySvgInjectionChallenge', (data: any) => {
-      challengeUtils.solveIf(challenges.svgInjectionChallenge, () => { return data?.match(/.*\.\.\/\.\.\/\.\.[\w/-]*?\/redirect\?to=https?:\/\/placekitten.com\/(g\/)?[\d]+\/[\d]+.*/) && security.isRedirectAllowed(data) })
+      console.log(`User ${socket.data.user.data.id} verifySvgInjectionChallenge attempt with data: ${data}`)
+      const key = 'verifySvgInjectionChallenge'
+      const limit = { window: 60 * 1000, max: 10 }
+      const now = Date.now()
+      let rl = socket.data.rateLimit[key] || { count: 0, reset: now + limit.window }
+      if (now > rl.reset) {
+        rl = { count: 0, reset: now + limit.window }
+      }
+      rl.count++
+      socket.data.rateLimit[key] = rl
+      if (rl.count > limit.max) {
+        socket.emit('error', 'Rate limit exceeded')
+        return
+      }
+      const match = data?.match(/.*\.\.\/\.\.\/\.\.[\w/-]*?\/redirect\?to=https?:\/\/placekitten.com\/(g\/)?[\d]+\/[\d]+.*/)
+      if (match && security.isRedirectAllowed(data)) {
+        challengeUtils.solveIf(challenges.svgInjectionChallenge, () => true)
+      }
     })
 
     socket.on('verifyCloseNotificationsChallenge', (data: any) => {
-      challengeUtils.solveIf(challenges.closeNotificationsChallenge, () => { return Array.isArray(data) && data.length > 1 })
+      console.log(`User ${socket.data.user.data.id} verifyCloseNotificationsChallenge attempt with data: ${JSON.stringify(data)}`)
+      const key = 'verifyCloseNotificationsChallenge'
+      const limit = { window: 60 * 1000, max: 10 }
+      const now = Date.now()
+      let rl = socket.data.rateLimit[key] || { count: 0, reset: now + limit.window }
+      if (now > rl.reset) {
+        rl = { count: 0, reset: now + limit.window }
+      }
+      rl.count++
+      socket.data.rateLimit[key] = rl
+      if (rl.count > limit.max) {
+        socket.emit('error', 'Rate limit exceeded')
+        return
+      }
+      if (Array.isArray(data) && data.length > 1) {
+        challengeUtils.solveIf(challenges.closeNotificationsChallenge, () => true)
+      }
     })
   })
 }
