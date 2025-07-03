@@ -21,6 +21,15 @@ const registerWebsocketEvents = (server: any) => {
   // @ts-expect-error FIXME Type safety issue when setting global socket-io object
   globalWithSocketIO.io = io
 
+  io.use((socket: any, next: any) => {
+    const { user } = socket.handshake.auth as { user?: any }
+    if (!user) {
+      return next(new Error('Unauthorized'))
+    }
+    socket.data.user = user
+    next()
+  })
+
   io.on('connection', (socket: any) => {
     if (firstConnectedSocket === null) {
       socket.emit('server started')
@@ -31,8 +40,9 @@ const registerWebsocketEvents = (server: any) => {
       socket.emit('challenge solved', notification)
     })
 
-    socket.on('notification received', (data: any) => {
-      const i = notifications.findIndex(({ flag }: any) => flag === data)
+    socket.on('notification received', (flag: any) => {
+      const userId = socket.data.user?.id
+      const i = notifications.findIndex(({ flag: f, userId: owner }: any) => f === flag && owner === userId)
       if (i > -1) {
         notifications.splice(i, 1)
       }
