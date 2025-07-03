@@ -57,6 +57,9 @@ module.exports.restoreProgressFixIt = function restoreProgressFixIt () {
   return async ({ params }: Request, res: Response) => {
     const continueCodeFixIt = params.continueCode
     const idsFixIt = hashids.decode(continueCodeFixIt)
+    if (hashids.encode(idsFixIt) !== continueCodeFixIt) {
+      return res.status(404).send('Invalid continue code.')
+    }
     if (idsFixIt.length > 0) {
       for (const key in challenges) {
         if (Object.prototype.hasOwnProperty.call(challenges, key)) {
