@@ -32,6 +32,16 @@ module.exports.walletNFTVerify = function walletNFTVerify () {
   return (req: Request, res: Response) => {
     try {
       const metamaskAddress = req.body.walletAddress
+      const signature = req.body.signature
+      let recoveredAddress
+      try {
+        recoveredAddress = ethers.utils.verifyMessage(metamaskAddress, signature)
+      } catch (err) {
+        return res.status(401).json({ success: false, message: 'Address ownership verification failed' })
+      }
+      if (recoveredAddress.toLowerCase() !== metamaskAddress.toLowerCase()) {
+        return res.status(401).json({ success: false, message: 'Address ownership verification failed' })
+      }
       if (addressesMinted.has(metamaskAddress)) {
         addressesMinted.delete(metamaskAddress)
         challengeUtils.solveIf(challenges.nftMintChallenge, () => true)
