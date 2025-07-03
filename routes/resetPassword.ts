@@ -26,6 +26,8 @@ module.exports = function resetPassword () {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
+    } else if (!body.token || body.token !== config.get<string>('resetPasswordToken')) {
+      res.status(401).send(res.__('Invalid or missing password reset token.'))
     } else {
       SecurityAnswerModel.findOne({
         include: [{
