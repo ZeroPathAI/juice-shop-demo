@@ -1,4 +1,5 @@
-const { ObjectId } = require('mongodb')
+import { ObjectId } from 'mongodb'
+import type { Request, Response, NextFunction } from 'express'
 
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
