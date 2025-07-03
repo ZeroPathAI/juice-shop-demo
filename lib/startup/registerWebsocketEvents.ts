@@ -27,9 +27,18 @@ const registerWebsocketEvents = (server: any) => {
       firstConnectedSocket = socket.id
     }
 
-    notifications.forEach((notification: any) => {
-      socket.emit('challenge solved', notification)
-    })
+    {
+      const { token } = socket.handshake.auth || {}
+      if (!token || !security.verify(token)) {
+        // Only authenticated clients may receive notifications
+        socket.emit('unauthorized')
+        socket.disconnect()
+      } else {
+        notifications.forEach((notification: any) => {
+          socket.emit('challenge solved', notification)
+        })
+      }
+    }
 
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
