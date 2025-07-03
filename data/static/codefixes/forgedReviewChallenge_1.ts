@@ -1,9 +1,11 @@
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req)
+    const id = String(req.body.id)
+    const message = String(req.body.message)
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message, author: user.data.email } },
+      { _id: id, author: user.data.email },
+      { $set: { message: message, author: user.data.email } },
       { multi: true }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
