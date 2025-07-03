@@ -23,7 +23,11 @@ module.exports.addWalletBalance = function addWalletBalance () {
     const cardId = req.body.paymentId
     const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: req.body.UserId } }) : null
     if (card != null) {
-      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: req.body.UserId } }).then(() => {
+      const amount = parseFloat(req.body.balance)
+      if (isNaN(amount) || amount <= 0 || amount > 1000) {
+        return res.status(400).json({ status: 'error', message: 'Invalid top-up amount.' })
+      }
+      WalletModel.increment({ balance: amount }, { where: { UserId: req.body.UserId } }).then(() => {
         res.status(200).json({ status: 'success', data: req.body.balance })
       }).catch(() => {
         res.status(404).json({ status: 'error' })
