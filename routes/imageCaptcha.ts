@@ -21,7 +21,8 @@ function imageCaptchas () {
     }
     const imageCaptchaInstance = ImageCaptchaModel.build(imageCaptcha)
     imageCaptchaInstance.save().then(() => {
-      res.json(imageCaptcha)
+      // Only send the captcha image to the client; hide the answer
+      res.json({ image: imageCaptcha.image })
     }).catch(() => {
       res.status(400).send(res.__('Unable to create CAPTCHA. Please try again.'))
     })
