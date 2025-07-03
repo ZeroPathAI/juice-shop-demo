@@ -18,6 +18,12 @@ import { Bot } from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
+
+// Handler whitelist and rate limiter for couponCode abuse
+const handlerWhitelist: string[] = Object.keys(botUtils)
+const couponRateLimiter: Map<string, { count: number; firstRequest: number }> = new Map()
+const COUPON_LIMIT = 5
+const COUPON_WINDOW_MS = 60 * 60 * 1000
 import { challenges } from '../data/datacache'
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
@@ -96,14 +102,34 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
       // @ts-expect-error FIXME unclean usage of any type as index
-      if (response.handler && botUtils[response.handler]) {
+      const handlerName = response.handler as string
+      // Rate limiter record
+      const now = Date.now()
+      let record = couponRateLimiter.get(user.id) || { count: 0, firstRequest: now }
+      if (now - record.firstRequest > COUPON_WINDOW_MS) {
+        record = { count: 0, firstRequest: now }
+      }
+      // Whitelist check
+      if (!handlerWhitelist.includes(handlerName)) {
+        logger.warn(`Unauthorized handler invocation attempt '${handlerName}' by user ${user.id}`)
+        return res.status(403).json({ error: 'Not authorized to invoke handler' })
+      }
+      // Rate limit couponCode
+      if (handlerName === 'couponCode') {
+        record.count++
+        couponRateLimiter.set(user.id, record)
+        if (record.count > COUPON_LIMIT) {
+          logger.warn(`Rate limit exceeded for couponCode by user ${user.id}`)
+          return res.status(429).json({ error: 'Rate limit exceeded for coupon code generation' })
+        }
+      }
+      try {
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
-      } else {
-        res.status(200).json({
-          action: 'response',
-          body: config.get('application.chatBot.defaultResponse')
-        })
+        const result = await botUtils[handlerName](req.body.query, user)
+        return res.status(200).json(result)
+      } catch (err) {
+        logger.error(`Error in handler '${handlerName}' for user ${user.id}: ${utils.getErrorMessage(err)}`)
+        return res.status(500).json({ error: 'Internal handler error' })
       }
     } else {
       res.status(200).json(response)
