@@ -35,10 +35,16 @@ module.exports = function login () {
       { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
+        const genericError = 'Invalid email, password, or two-factor authentication code.'
         if (user.data?.id) {
-          afterLogin(user, res, next)
+          const totpValid = security.verifyTotp(req.body.totpToken || '', user.data.totpSecret || '')
+          if (totpValid) {
+            afterLogin(user, res, next)
+          } else {
+            res.status(401).send(res.__(genericError))
+          }
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          res.status(401).send(res.__(genericError))
         }
       }).catch((error: Error) => {
         next(error)
