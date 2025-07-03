@@ -68,6 +68,9 @@ export const serveCodeFixes = () => (req: Request<FixesRequestParams, Record<str
 
 export const checkCorrectFix = () => async (req: Request<Record<string, unknown>, Record<string, unknown>, VerdictRequestBody>, res: Response, next: NextFunction) => {
   const key = req.body.key
+  if (!/^[a-zA-Z0-9_-]+$/.test(key)) {
+    return res.status(400).json({ error: 'Invalid key' })
+  }
   const selectedFix = req.body.selectedFix
   const fixData = readFixes(key)
   if (fixData.fixes.length === 0) {
