@@ -32,6 +32,7 @@ const registerWebsocketEvents = (server: any) => {
     })
 
     socket.on('notification received', (data: any) => {
+      if (socket.id !== firstConnectedSocket) { return }
       const i = notifications.findIndex(({ flag }: any) => flag === data)
       if (i > -1) {
         notifications.splice(i, 1)
