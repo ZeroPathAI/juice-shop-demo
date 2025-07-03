@@ -50,6 +50,9 @@ module.exports = function dataExport () {
         memories: []
       }
 
+      if (String(req.body.UserId) !== String(loggedInUser.data.id)) {
+        return next(new Error('Unauthorized access to memories'))
+      }
       const memories = await MemoryModel.findAll({ where: { UserId: req.body.UserId } })
       memories.forEach((memory: MemoryModel) => {
         userData.memories.push({
