@@ -11,6 +11,7 @@ import * as challengeUtils from '../challengeUtils'
 import * as security from '../insecurity'
 
 let firstConnectedSocket: any = null
+const notificationReceivers: Record<string, string> = {}
 
 const globalWithSocketIO = global as typeof globalThis & {
   io: SocketIOClientStatic & Server
@@ -29,12 +30,14 @@ const registerWebsocketEvents = (server: any) => {
 
     notifications.forEach((notification: any) => {
       socket.emit('challenge solved', notification)
+      notificationReceivers[notification.flag] = socket.id
     })
 
     socket.on('notification received', (data: any) => {
       const i = notifications.findIndex(({ flag }: any) => flag === data)
-      if (i > -1) {
+      if (i > -1 && notificationReceivers[data] === socket.id) {
         notifications.splice(i, 1)
+        delete notificationReceivers[data]
       }
     })
 
