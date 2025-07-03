@@ -31,7 +31,8 @@
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
-        context.instance.role = context.instance.role ? context.instance.role : 'customer'
+        // enforce default role and ignore any supplied value
+        context.instance.role = 'customer'
         return context.continue
       })
     }
