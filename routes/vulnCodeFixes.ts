@@ -4,6 +4,7 @@ import * as accuracy from '../lib/accuracy'
 const challengeUtils = require('../lib/challengeUtils')
 const fs = require('fs')
 const yaml = require('js-yaml')
+const security = require('../lib/security')
 
 const FixesDir = 'data/static/codefixes'
 
@@ -67,6 +68,11 @@ export const serveCodeFixes = () => (req: Request<FixesRequestParams, Record<str
 }
 
 export const checkCorrectFix = () => async (req: Request<Record<string, unknown>, Record<string, unknown>, VerdictRequestBody>, res: Response, next: NextFunction) => {
+  const authData = security.authenticatedUsers.from(req)
+  if (!authData) {
+    res.status(401).json({ error: 'Authentication required' })
+    return
+  }
   const key = req.body.key
   const selectedFix = req.body.selectedFix
   const fixData = readFixes(key)
