@@ -9,13 +9,18 @@ import { BasketModel } from '../models/basket'
 const security = require('../lib/insecurity')
 
 module.exports = function applyCoupon () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
+  return (req: Request & { auth?: any }, res: Response, next: NextFunction) => {
+    const { id } = req.params
     const id = params.id
     let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
     BasketModel.findByPk(id).then((basket: BasketModel | null) => {
       if (basket != null) {
+        // Verify ownership: only allow coupon on own basket
+        if ((basket as any).userId !== req.auth?.data?.id) {
+          return next(new Error('Basket access forbidden.'))
+        }
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
             res.json({ discount })
