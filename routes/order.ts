@@ -136,6 +136,11 @@ module.exports = function placeOrder () {
           challengeUtils.solveIf(challenges.negativeOrderChallenge, () => { return totalPrice < 0 })
 
           if (req.body.UserId) {
+            const customer = security.authenticatedUsers.from(req)
+            if (!customer || !customer.data || req.body.UserId !== customer.data.id) {
+              next(new Error('Unauthorized access.'))
+              return
+            }
             if (req.body.orderDetails && req.body.orderDetails.paymentId === 'wallet') {
               const wallet = await WalletModel.findOne({ where: { UserId: req.body.UserId } })
               if ((wallet != null) && wallet.balance >= totalPrice) {
