@@ -22,6 +22,9 @@ const registerWebsocketEvents = (server: any) => {
   globalWithSocketIO.io = io
 
   io.on('connection', (socket: any) => {
+    // Require authentication for websocket connections
+    const user = security.authenticatedUsers.from(socket.request)
+    if (!user) { socket.disconnect(true); return }
     if (firstConnectedSocket === null) {
       socket.emit('server started')
       firstConnectedSocket = socket.id
