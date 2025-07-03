@@ -27,6 +27,21 @@ module.exports = function resetPassword () {
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
     } else {
+      // Enforce email‐based reset token verification
+      const resetToken = body.resetToken
+      if (!resetToken || !security.verify(resetToken)) {
+        res.status(401).send(res.__('Invalid or missing reset token.'))
+        return
+      }
+      let decoded = security.decode(resetToken)
+      let payload: any = decoded
+      if (typeof decoded === 'string') {
+        try { payload = JSON.parse(decoded) } catch {}
+      }
+      if (!payload?.data?.email || payload.data.email !== email) {
+        res.status(401).send(res.__('Reset token does not match provided email.'))
+        return
+      }
       SecurityAnswerModel.findOne({
         include: [{
           model: UserModel,
