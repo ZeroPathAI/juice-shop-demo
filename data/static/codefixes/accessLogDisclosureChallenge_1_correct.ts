@@ -7,11 +7,21 @@
   app.use('/.well-known', express.static('.well-known'))
 
   /* /encryptionkeys directory browsing */
-  app.use('/encryptionkeys', serveIndexMiddleware, serveIndex('encryptionkeys', { icons: true, view: 'details' }))
-  app.use('/encryptionkeys/:file', keyServer())
+  app.use('/encryptionkeys', ensureLoggedIn, serveIndexMiddleware, serveIndex('encryptionkeys', { icons: true, view: 'details' }))
+  app.use('/encryptionkeys/:file', ensureLoggedIn, keyServer())
 
   /* Swagger documentation for B2B v2 endpoints */
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
   app.use(express.static(path.resolve('frontend/dist/frontend')))
   app.use(cookieParser('kekse'))
+
+  // Authentication middleware to protect /encryptionkeys routes
+  function ensureLoggedIn(req, res, next) {
+    const authData = security.authenticatedUsers.from(req)
+    if (!authData) {
+      res.status(401)
+      return res.send('Authentication required')
+    }
+    next()
+  }
