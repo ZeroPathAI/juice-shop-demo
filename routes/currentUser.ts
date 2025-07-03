@@ -21,7 +21,8 @@ module.exports = function retrieveLoggedInUser () {
       user = undefined
     } finally {
       const response = { user: { id: (user?.data ? user.data.id : undefined), email: (user?.data ? user.data.email : undefined), lastLoginIp: (user?.data ? user.data.lastLoginIp : undefined), profileImage: (user?.data ? user.data.profileImage : undefined) } }
-      if (req.query.callback === undefined) {
+      const callbackName = typeof req.query.callback === 'string' ? req.query.callback : undefined
+      if (!callbackName || !/^[a-zA-Z0-9_\\.]+$/.test(callbackName)) {
         res.json(response)
       } else {
         challengeUtils.solveIf(challenges.emailLeakChallenge, () => { return true })
