@@ -21,9 +21,10 @@ module.exports.getWalletBalance = function getWalletBalance () {
 module.exports.addWalletBalance = function addWalletBalance () {
   return async (req: Request, res: Response, next: NextFunction) => {
     const cardId = req.body.paymentId
-    const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: req.body.UserId } }) : null
+    const userId = req.user.id
+    const card = cardId ? await CardModel.findOne({ where: { id: cardId, UserId: userId } }) : null
     if (card != null) {
-      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: req.body.UserId } }).then(() => {
+      WalletModel.increment({ balance: req.body.balance }, { where: { UserId: userId } }).then(() => {
         res.status(200).json({ status: 'success', data: req.body.balance })
       }).catch(() => {
         res.status(404).json({ status: 'error' })
