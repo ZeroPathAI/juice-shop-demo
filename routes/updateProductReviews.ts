@@ -14,6 +14,9 @@ const security = require('../lib/insecurity')
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req) // vuln-code-snippet vuln-line forgedReviewChallenge
+    if (!user || !user.data) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
     db.reviewsCollection.update( // vuln-code-snippet neutral-line forgedReviewChallenge
       { _id: req.body.id, author: user.data.email }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
       { $set: { message: req.body.message } },
