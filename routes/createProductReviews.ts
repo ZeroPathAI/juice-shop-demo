@@ -15,7 +15,10 @@ const security = require('../lib/insecurity')
 module.exports = function productReviews () {
   return (req: Request, res: Response) => {
     const user = security.authenticatedUsers.from(req)
-    challengeUtils.solveIf(challenges.forgedReviewChallenge, () => { return user && user.data.email !== req.body.author })
+    if (!user) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required' })
+    }
+    challengeUtils.solveIf(challenges.forgedReviewChallenge, () => { return user.data.email !== req.body.author })
     reviewsCollection.insert({
       product: req.params.id,
       message: req.body.message,
