@@ -25,12 +25,19 @@ module.exports = function servePublicFiles () {
 
   function verify (file: string, res: Response, next: NextFunction) {
     file = security.cutOffPoisonNullByte(file)
+    const normalized = path.normalize(file)
+    const ftpDir = path.resolve('ftp')
+    const resolvedPath = path.resolve(ftpDir, normalized)
+    if (!resolvedPath.startsWith(ftpDir + path.sep)) {
+      res.status(403)
+      return next(new Error('Invalid file path!'))
+    }
     if (file && (endsWithAllowlistedFileType(file) || (file === 'incident-support.kdbx'))) {
 
       challengeUtils.solveIf(challenges.directoryListingChallenge, () => { return file.toLowerCase() === 'acquisitions.md' })
       verifySuccessfulPoisonNullByteExploit(file)
 
-      res.sendFile(path.resolve('ftp/', file))
+      res.sendFile(resolvedPath)
     } else {
       res.status(403)
       next(new Error('Only .md and .pdf files are allowed!'))
