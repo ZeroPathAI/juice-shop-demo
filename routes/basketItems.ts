@@ -71,6 +71,9 @@ module.exports.quantityCheckBeforeBasketItemUpdate = function quantityCheckBefor
         if (item == null) {
           throw new Error('No such item found!')
         }
+        if (item.BasketId !== Number(user.bid)) {
+          return res.status(403).json({ error: 'Forbidden' })
+        }
         void quantityCheck(req, res, next, item.ProductId, req.body.quantity)
       } else {
         next()
