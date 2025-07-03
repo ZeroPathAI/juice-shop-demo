@@ -9,13 +9,16 @@ import { BasketModel } from '../models/basket'
 const security = require('../lib/insecurity')
 
 module.exports = function applyCoupon () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
-    const id = params.id
-    let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
+  return (req: Request, res: Response, next: NextFunction) => {
+    const id = req.params.id
+    let coupon: string | undefined | null = req.params.coupon ? decodeURIComponent(req.params.coupon) : undefined
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
     BasketModel.findByPk(id).then((basket: BasketModel | null) => {
       if (basket != null) {
+        if ((basket as any).UserId !== (req as any).user?.id) {
+          return next(new Error('Access denied.'))
+        }
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
             res.json({ discount })
