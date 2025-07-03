@@ -45,7 +45,9 @@ function handleZipFileUpload ({ file }: Request, res: Response, next: NextFuncti
                 } else {
                   entry.autodrain()
                 }
-              }).on('error', function (err: unknown) { next(err) })
+              })
+              .on('error', function (err: unknown) { next(err) })
+              .on('close', function () { fs.unlink(tempFile, function (err) { if (err) next(err) }) })
           })
         })
       })
