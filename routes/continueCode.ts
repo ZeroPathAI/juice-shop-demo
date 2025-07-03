@@ -10,16 +10,18 @@ import { challenges } from '../data/datacache'
 
 const sequelize = require('sequelize')
 const Op = sequelize.Op
+const security = require('../lib/security')
 
 module.exports.continueCode = function continueCode () {
   const hashids = new Hashids('this is my salt', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
-  return (req: Request, res: Response) => {
-    const ids = []
-    for (const name in challenges) {
-      if (Object.prototype.hasOwnProperty.call(challenges, name)) {
-        if (challenges[name].solved) ids.push(challenges[name].id)
-      }
+  return async (req: Request, res: Response) => {
+    const auth = security.authenticatedUsers.from(req)
+    if (!auth) {
+      return res.status(401).json({ error: 'Authentication required' })
     }
+    const userId = auth.data.id
+    const solvedChallenges = await ChallengeModel.findAll({ where: { solved: true, UserId: userId } })
+    const ids = solvedChallenges.map(challenge => challenge.id)
     const continueCode = ids.length > 0 ? hashids.encode(ids) : undefined
     res.json({ continueCode })
   }
