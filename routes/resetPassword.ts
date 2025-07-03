@@ -20,6 +20,11 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const token = body.token
+    if (!token) {
+      res.status(401).send(res.__('Password reset token is required.'))
+      return
+    }
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
