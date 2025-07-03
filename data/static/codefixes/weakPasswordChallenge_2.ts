@@ -8,6 +8,9 @@ User.init(
           validatePasswordHasAtLeastOneLowerCaseChar(clearTextPassword)
           validatePasswordHasAtLeastTenChar(clearTextPassword)
           validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
-          this.setDataValue('password', security.hash(clearTextPassword))
+          const crypto = require('crypto')
+          const salt = crypto.randomBytes(16).toString('hex')
+          const derivedKey = crypto.scryptSync(clearTextPassword, salt, 64).toString('hex')
+          this.setDataValue('password', `${salt}:${derivedKey}`)
         }
       },
