@@ -16,6 +16,25 @@ module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      // SSRF mitigation: validate URL and reject private/internal hosts
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(url)
+        const hostname = parsedUrl.hostname
+        if (
+          ['localhost'].includes(hostname) ||
+          /^127\.\d+\.\d+\.\d+$/.test(hostname) ||
+          /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+          /^192\.168\.\d+\.\d+$/.test(hostname) ||
+          /^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(hostname)
+        ) {
+          throw new Error('Invalid hostname')
+        }
+      } catch (err) {
+        logger.warn(`Blocked SSRF attempt to ${url}: ${utils.getErrorMessage(err)}`)
+        res.status(400).send('Invalid image URL')
+        return
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
