@@ -9,6 +9,7 @@ import { UserModel } from '../models/user'
 import { challenges } from '../data/datacache'
 
 import * as utils from '../lib/utils'
+import { QueryTypes } from 'sequelize'
 const challengeUtils = require('../lib/challengeUtils')
 
 class ErrorWithParent extends Error {
