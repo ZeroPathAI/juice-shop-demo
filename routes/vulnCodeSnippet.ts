@@ -9,6 +9,7 @@ import yaml from 'js-yaml'
 import { getCodeChallenges } from '../lib/codingChallenges'
 import * as accuracy from '../lib/accuracy'
 import * as utils from '../lib/utils'
+import * as security from '../lib/security'
 
 const challengeUtils = require('../lib/challengeUtils')
 
@@ -39,8 +40,21 @@ export const retrieveCodeSnippet = async (challengeKey: string) => {
 }
 
 exports.serveCodeSnippet = () => async (req: Request<SnippetRequestBody, Record<string, unknown>, Record<string, unknown>>, res: Response, next: NextFunction) => {
-  if (!req.headers.authorization) {
+  const authHeader = req.headers.authorization
+  if (!authHeader) {
     res.status(401).json({ status: 'error', error: 'Authentication required' })
+    return
+  }
+  const token = authHeader.split(' ')[1] || authHeader
+  let decoded
+  try {
+    decoded = security.verify(token)
+  } catch (err) {
+    res.status(401).json({ status: 'error', error: utils.getErrorMessage(err) })
+    return
+  }
+  if (!decoded || decoded.role !== 'admin') {
+    res.status(403).json({ status: 'error', error: 'Insufficient privileges' })
     return
   }
   try {
