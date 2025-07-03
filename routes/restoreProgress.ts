@@ -34,6 +34,10 @@ module.exports.restoreProgress = function restoreProgress () {
 
 module.exports.restoreProgressFindIt = function restoreProgressFindIt () {
   return async ({ params }: Request, res: Response) => {
+      if (!res.locals.user) {
+        res.status(401).send('Authentication required')
+        return
+      }
     const hashids = new Hashids('this is the salt for findIt challenges', 60, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890')
     const continueCodeFindIt = params.continueCode
     const idsFindIt = hashids.decode(continueCodeFindIt)
