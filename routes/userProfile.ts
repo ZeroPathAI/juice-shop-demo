@@ -33,7 +33,7 @@ module.exports = function getUserProfile () {
               if (!code) {
                 throw new Error('Username is null')
               }
-              username = eval(code) // eslint-disable-line no-eval
+              username = entities.encode(code)
             } catch (err) {
               username = '\\' + username
             }
