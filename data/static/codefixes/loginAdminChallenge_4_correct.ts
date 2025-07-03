@@ -19,15 +19,8 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
+          // Do not reveal 2FA requirement to prevent user enumeration
+          res.status(401).send(res.__('Invalid email or password.'))
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
