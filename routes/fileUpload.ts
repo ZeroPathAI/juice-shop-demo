@@ -74,14 +74,17 @@ function handleXmlUpload ({ file }: Request, res: Response, next: NextFunction) 
     challengeUtils.solveIf(challenges.deprecatedInterfaceChallenge, () => { return true })
     if (((file?.buffer) != null) && utils.isChallengeEnabled(challenges.deprecatedInterfaceChallenge)) { // XXE attacks in Docker/Heroku containers regularly cause "segfault" crashes
       const data = file.buffer.toString()
+      // Reject DTDs and entities to prevent XXE
+      if (/<!DOCTYPE[\s\S]*?>/i.test(data) || /<!ENTITY/i.test(data)) {
+        res.status(400)
+        return next(new Error('Invalid XML document: DTDs and entities are not allowed'))
+      }
       try {
-        const sandbox = { libxml, data }
-        vm.createContext(sandbox)
-        const xmlDoc = vm.runInContext('libxml.parseXml(data, { noblanks: true, noent: false, nocdata: true })', sandbox, { timeout: 2000 })
-        const xmlString = xmlDoc.toString(false)
-        challengeUtils.solveIf(challenges.xxeFileDisclosureChallenge, () => { return (utils.matchesEtcPasswdFile(xmlString) || utils.matchesSystemIniFile(xmlString)) })
+        const xmlDoc = libxml.parseXml(data, { noblanks: true, noent: false, nocdata: true })
+        // Skip entity disclosure challenge to avoid using parsed XML content
+        challengeUtils.solveIf(challenges.xxeFileDisclosureChallenge, () => false)
         res.status(410)
-        next(new Error('B2B customer complaints via file upload have been deprecated for security reasons: ' + utils.trunc(xmlString, 400) + ' (' + file.originalname + ')'))
+        next(new Error('B2B customer complaints via file upload are temporarily unavailable (' + file.originalname + ')'))
       } catch (err: any) { // TODO: Remove any
         if (utils.contains(err.message, 'Script execution timed out')) {
           if (challengeUtils.notSolved(challenges.xxeDosChallenge)) {
@@ -91,7 +94,7 @@ function handleXmlUpload ({ file }: Request, res: Response, next: NextFunction) 
           next(new Error('Sorry, we are temporarily not available! Please try again later.'))
         } else {
           res.status(410)
-          next(new Error('B2B customer complaints via file upload have been deprecated for security reasons: ' + err.message + ' (' + file.originalname + ')'))
+          next(new Error('B2B customer complaints via file upload are temporarily unavailable (' + file.originalname + ')'))
         }
       }
     } else {
