@@ -1,9 +1,17 @@
 module.exports = function productReviews () {
+const { ObjectId } = require('mongodb');
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req)
+    let filter
+    try {
+      filter = { _id: new ObjectId(req.body.id), author: user.username }
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid id' })
+    }
+    const sanitizedMessage = typeof req.body.message === 'string' ? req.body.message : ''
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message } }
+      filter,
+      { $set: { message: sanitizedMessage } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         res.json(result)
