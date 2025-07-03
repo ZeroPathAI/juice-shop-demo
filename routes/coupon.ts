@@ -9,12 +9,16 @@ import { BasketModel } from '../models/basket'
 const security = require('../lib/insecurity')
 
 module.exports = function applyCoupon () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
-    const id = params.id
-    let coupon: string | undefined | null = params.coupon ? decodeURIComponent(params.coupon) : undefined
+  return (req: Request & { user?: { id: number } }, res: Response, next: NextFunction) => {
+    const userId = req.user?.id
+    if (!userId) {
+      return res.status(403).send('Forbidden.')
+    }
+    const id = req.params.id
+    let coupon: string | undefined | null = req.params.coupon ? decodeURIComponent(req.params.coupon) : undefined
     const discount = security.discountFromCoupon(coupon)
     coupon = discount ? coupon : null
-    BasketModel.findByPk(id).then((basket: BasketModel | null) => {
+    BasketModel.findOne({ where: { id: id, UserId: userId } }).then((basket: BasketModel | null) => {
       if (basket != null) {
         basket.update({ coupon: coupon?.toString() }).then(() => {
           if (discount) {
@@ -26,7 +30,7 @@ module.exports = function applyCoupon () {
           next(error)
         })
       } else {
-        next(new Error('Basket with id=' + id + ' does not exist.'))
+        res.status(403).send('Forbidden.')
       }
     }).catch((error: Error) => {
       next(error)
