@@ -11,11 +11,22 @@ import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const request = require('request')
+import { URL } from 'url'
 
 module.exports = function profileImageUrlUpload () {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
       const url = req.body.imageUrl
+      try {
+        const parsedUrl = new URL(url)
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          next(new Error('Invalid image URL protocol'))
+          return
+        }
+      } catch {
+        next(new Error('Invalid image URL'))
+        return
+      }
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
