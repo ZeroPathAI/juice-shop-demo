@@ -43,7 +43,7 @@ module.exports = function login () {
               tmpToken: security.authorize({
                 userId: user.data.id,
                 type: 'password_valid_needs_second_factor_token'
-              })
+              }, { expiresIn: '5m' })
             }
           })
         } else if (user.data?.id) {
