@@ -24,6 +24,7 @@ module.exports = function servePublicFiles () {
   }
 
   function verify (file: string, res: Response, next: NextFunction) {
+    file = security.cutOffPoisonNullByte(file)
     if (file && (endsWithAllowlistedFileType(file) || (file === 'incident-support.kdbx'))) {
       
 
