@@ -19,6 +19,11 @@ module.exports = function updateUserProfile () {
     if (loggedInUser) {
       UserModel.findByPk(loggedInUser.data.id).then((user: UserModel | null) => {
         if (user != null) {
+          // CSRF protection: enforce same-origin header
+          const expectedOrigin = `${req.protocol}://${req.get('host')}`
+          if (req.headers.origin !== expectedOrigin) {
+            return next(new Error('Blocked potential CSRF attack'))
+          }
           challengeUtils.solveIf(challenges.csrfChallenge, () => {
             return ((req.headers.origin?.includes('://htmledit.squarefree.com')) ??
               (req.headers.referer?.includes('://htmledit.squarefree.com'))) &&
