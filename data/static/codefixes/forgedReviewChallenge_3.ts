@@ -12,8 +12,8 @@ module.exports = function productReviews () {
     }
     const safeMessage = String(req.body.message).replace(/[<>]/g, '');
     db.reviewsCollection.update(
-      { _id: req.body.id },
-      { $set: { message: req.body.message } }
+      { _id: reviewId },
+      { $set: { message: safeMessage } }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         res.json(result)
