@@ -7,7 +7,12 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveLogFiles () {
-  return ({ params }: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { params } = req
+    if (typeof req.isAuthenticated === 'function' ? !req.isAuthenticated() : !req.user) {
+      res.status(401)
+      return next(new Error('Authentication required to access log files!'))
+    }
     const file = params.file
 
     if (!file.includes('/')) {
