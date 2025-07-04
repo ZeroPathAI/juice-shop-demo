@@ -8,6 +8,10 @@ import logger from '../lib/logger'
 
 module.exports = function countryMapping (config = require('config')) {
   return (req: Request, res: Response) => {
+    if (!(req as any).user) {
+      res.sendStatus(401)
+      return
+    }
     try {
       const countryMapping = config.get('ctf.countryMapping')
       if (!countryMapping) {
