@@ -9,6 +9,10 @@ import { RecycleModel } from '../models/recycle'
 import * as utils from '../lib/utils'
 
 exports.getRecycleItem = () => (req: Request, res: Response) => {
+  // Authentication: require Bearer token
+  if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+    return res.status(401).send(utils.queryResultToJson({ err: 'Authentication required.' }))
+  }
   RecycleModel.findAll({
     where: {
       id: JSON.parse(req.params.id)
