@@ -6,6 +6,7 @@
 import fs = require('fs')
 import { type Request, type Response, type NextFunction } from 'express'
 import logger from '../lib/logger'
+import { URL } from 'url'
 
 import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
@@ -19,8 +20,24 @@ module.exports = function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
+        let safeUrl: string
+        try {
+          const parsedUrl = new URL(url)
+          const hostname = parsedUrl.hostname
+          if (!['http:', 'https:'].includes(parsedUrl.protocol) ||
+              hostname === 'localhost' ||
+              /^127\./.test(hostname) ||
+              /^10\./.test(hostname) ||
+              /^192\.168\./.test(hostname) ||
+              /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) {
+            throw new Error('Invalid URL')
+          }
+          safeUrl = parsedUrl.toString()
+        } catch (error) {
+          return next(new Error('Invalid image URL'))
+        }
         const imageRequest = request
-          .get(url)
+          .get(safeUrl)
           .on('error', function (err: unknown) {
             UserModel.findByPk(loggedInUser.data.id).then(async (user: UserModel | null) => { return await user?.update({ profileImage: url }) }).catch((error: Error) => { next(error) })
             logger.warn(`Error retrieving user profile image: ${utils.getErrorMessage(err)}; using image link directly`)
