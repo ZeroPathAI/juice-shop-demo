@@ -20,6 +20,19 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const token = body.token || (req.headers['x-access-token'] as string)
+    if (!token) {
+      return res.status(401).send(res.__('Authentication token required.'))
+    }
+    let payload
+    try {
+      payload = security.verify(token)
+    } catch {
+      return res.status(401).send(res.__('Unauthorized.'))
+    }
+    if (payload.email !== email) {
+      return res.status(401).send(res.__('Unauthorized.'))
+    }
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
