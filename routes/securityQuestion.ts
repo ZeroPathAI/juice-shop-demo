@@ -18,8 +18,8 @@ module.exports = function securityQuestion () {
       }]
     }).then((answer: SecurityAnswerModel | null) => {
       if (answer != null) {
-        SecurityQuestionModel.findByPk(answer.SecurityQuestionId).then((question: SecurityQuestionModel | null) => {
-          res.json({ question })
+        SecurityQuestionModel.findByPk(answer.SecurityQuestionId).then((_question: SecurityQuestionModel | null) => {
+          res.json({})
         }).catch((error: Error) => {
           next(error)
         })
