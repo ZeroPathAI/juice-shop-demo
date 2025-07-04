@@ -7,8 +7,16 @@ import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 
 module.exports = function serveQuarantineFiles () {
-  return ({ params, query }: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { params, query } = req
     const file = params.file
+
+    // Ensure the user is authenticated and authorized
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403)
+      next(new Error('Not authorized to access quarantine files!'))
+      return
+    }
 
     if (!file.includes('/')) {
       res.sendFile(path.resolve('ftp/quarantine/', file))
