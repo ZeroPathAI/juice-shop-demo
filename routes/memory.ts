@@ -6,6 +6,7 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import { MemoryModel } from '../models/memory'
 import { UserModel } from '../models/user'
+import security from '../lib/insecurity'
 
 module.exports.addMemory = function addMemory () {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -21,7 +22,12 @@ module.exports.addMemory = function addMemory () {
 
 module.exports.getMemories = function getMemories () {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const memories = await MemoryModel.findAll({ include: [UserModel] })
+    const data = security.authenticatedUsers.from(req)
+    if (!data) {
+      res.status(401).json({ status: 'error', message: 'Unauthorized' })
+      return
+    }
+    const memories = await MemoryModel.findAll({ where: { UserId: data.data.id }, include: [UserModel] })
     res.status(200).json({ status: 'success', data: memories })
   }
 }
