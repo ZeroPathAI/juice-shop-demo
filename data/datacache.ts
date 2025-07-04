@@ -25,6 +25,7 @@ export interface Notification {
   name: string
   challenge: string
   flag: string
+  userId: string
   hidden: boolean
   isRestore: boolean
 }

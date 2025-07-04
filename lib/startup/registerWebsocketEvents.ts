@@ -31,14 +31,14 @@ const registerWebsocketEvents = (server: any) => {
       socket.emit('challenge solved', notification)
     })
 
-    socket.on('notification received', (data: any) => {
-      // Prevent unauthorized deletion of notifications (IDOR fix)
-      if (socket.id !== firstConnectedSocket) {
+    socket.on('notification received', (flag: any) => {
+      const userId = socket.request.user?.id
+      if (!userId) {
         return
       }
-      const i = notifications.findIndex(({ flag }: any) => flag === data)
-      if (i > -1) {
-        notifications.splice(i, 1)
+      const index = notifications.findIndex(({ flag: f, userId: uid }: any) => f === flag && uid === userId)
+      if (index > -1) {
+        notifications.splice(index, 1)
       }
     })
 
