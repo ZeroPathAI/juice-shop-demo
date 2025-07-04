@@ -24,8 +24,7 @@ function captchas () {
 
     const captcha = {
       captchaId,
-      captcha: expression,
-      answer
+      captcha: expression
     }
     const captchaInstance = CaptchaModel.build(captcha)
     await captchaInstance.save()
