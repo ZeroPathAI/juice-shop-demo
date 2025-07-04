@@ -18,6 +18,8 @@ import { Bot } from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
+
+const usedCouponUsers = new Set<string>()
 import { challenges } from '../data/datacache'
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
@@ -97,8 +99,17 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
     if (response.action === 'function') {
       // @ts-expect-error FIXME unclean usage of any type as index
       if (response.handler && botUtils[response.handler]) {
+        const handlerName = response.handler
+        if (handlerName === 'couponCode') {
+          const userKey = `${user.id}`
+          if (usedCouponUsers.has(userKey)) {
+            res.status(403).json({ error: 'Coupon already used' })
+            return
+          }
+          usedCouponUsers.add(userKey)
+        }
         // @ts-expect-error FIXME unclean usage of any type as index
-        res.status(200).json(await botUtils[response.handler](req.body.query, user))
+        res.status(200).json(await botUtils[handlerName](req.body.query, user))
       } else {
         res.status(200).json({
           action: 'response',
