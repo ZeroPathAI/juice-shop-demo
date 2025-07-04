@@ -4,6 +4,7 @@ import * as utils from '../lib/utils'
 import { challenges } from '../data/datacache'
 const web3WalletABI = require('../data/static/contractABIs').web3WalletABI
 const ethers = require('ethers')
+const security = require('../lib/security')
 const web3WalletAddress = '0x413744D59d31AFDC2889aeE602636177805Bd7b0'
 const walletsConnected = new Set()
 let isEventListenerCreated = false
@@ -11,6 +12,14 @@ let isEventListenerCreated = false
 module.exports.contractExploitListener = function contractExploitListener () {
   return (req: Request, res: Response) => {
     const metamaskAddress = req.body.walletAddress
+    const auth = security.authenticatedUsers.from(req)
+    if (!auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+    const { data: user } = auth
+    if (user.metamaskAddress !== metamaskAddress) {
+      return res.status(403).json({ success: false, message: 'Forbidden' })
+    }
     walletsConnected.add(metamaskAddress)
     try {
       const provider = new ethers.WebSocketProvider('wss://eth-sepolia.g.alchemy.com/v2/FZDapFZSs1l6yhHW4VnQqsi18qSd-3GJ')
