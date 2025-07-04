@@ -1,3 +1,5 @@
+import bcrypt from 'bcrypt'
+
 User.init(
       password: {
         type: DataTypes.STRING,
@@ -8,6 +10,6 @@ User.init(
           validatePasswordHasAtLeastOneLowerCaseChar(clearTextPassword)
           validatePasswordHasAtLeastTenChar(clearTextPassword)
           validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
-          this.setDataValue('password', security.hash(clearTextPassword))
+          this.setDataValue('password', bcrypt.hashSync(clearTextPassword, 10))
         }
       },
