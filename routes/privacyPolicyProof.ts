@@ -8,6 +8,7 @@ import { type Request, type Response } from 'express'
 import { challenges } from '../data/datacache'
 
 import challengeUtils = require('../lib/challengeUtils')
+import security = require('../lib/security')
 
 module.exports = function servePrivacyPolicyProof () {
   return (req: Request, res: Response) => {
