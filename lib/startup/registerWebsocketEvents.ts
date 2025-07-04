@@ -21,6 +21,17 @@ const registerWebsocketEvents = (server: any) => {
   // @ts-expect-error FIXME Type safety issue when setting global socket-io object
   globalWithSocketIO.io = io
 
+  // Require authentication for websocket connections
+  io.use((socket: any, next: any) => {
+    const token = socket.handshake.auth?.token
+    try {
+      security.verify(token)
+      next()
+    } catch (err) {
+      next(new Error('Authentication error'))
+    }
+  })
+
   io.on('connection', (socket: any) => {
     if (firstConnectedSocket === null) {
       socket.emit('server started')
