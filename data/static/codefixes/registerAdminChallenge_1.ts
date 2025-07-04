@@ -28,6 +28,12 @@
     // create a wallet when a new user is registered using API
     if (name === 'User') {
       resource.create.send.before((req: Request, res: Response, context: { instance: { id: any }, continue: any }) => {
+        // enforce admin-only access
+        if (!req.user || req.user.role !== 'admin') {
+          res.status(403).json({ error: 'Forbidden' })
+          return
+        }
+        // create a wallet when a new user is registered using API
         WalletModel.create({ UserId: context.instance.id }).catch((err: unknown) => {
           console.log(err)
         })
