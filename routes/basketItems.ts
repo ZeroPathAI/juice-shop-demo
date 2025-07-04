@@ -67,6 +67,10 @@ module.exports.quantityCheckBeforeBasketItemUpdate = function quantityCheckBefor
     BasketItemModel.findOne({ where: { id: req.params.id } }).then((item: BasketItemModel | null) => {
       const user = security.authenticatedUsers.from(req)
       challengeUtils.solveIf(challenges.basketManipulateChallenge, () => { return user && req.body.BasketId && user.bid != req.body.BasketId }) // eslint-disable-line eqeqeq
+      if (item && user && item.BasketId != user.bid) { // eslint-disable-line eqeqeq
+        res.status(401).send('{\'error\' : \'Invalid BasketId\'}')
+        return
+      }
       if (req.body.quantity) {
         if (item == null) {
           throw new Error('No such item found!')
