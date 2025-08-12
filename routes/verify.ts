@@ -58,7 +58,7 @@ exports.registerAdminChallenge = () => (req: Request, res: Response, next: NextF
 }
 
 exports.passwordRepeatChallenge = () => (req: Request, res: Response, next: NextFunction) => {
-  challengeUtils.solveIf(challenges.passwordRepeatChallenge, () => { return req.body && req.body.passwordRepeat !== req.body.password })
+  challengeUtils.solveIf(challenges.passwordRepeatChallenge, () => { return req.body && req.body.passwordRepeat === req.body.password })
   next()
 }
 
