@@ -38,6 +38,28 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
+              // Invalidate all existing sessions for this user
+              const sessionStore = (res.req as any).sessionStore
+              if (sessionStore && typeof sessionStore.all === 'function') {
+                sessionStore.all((err: Error | null, sessions: { [sid: string]: any }) => {
+                  if (!err) {
+                    Object.keys(sessions).forEach(sid => {
+                      const sess = sessions[sid]
+                      if (sess.user && sess.user.id === user.id) {
+                        sessionStore.destroy(sid, () => {})
+                      }
+                    })
+                  }
+                })
+              }
+              // Send password change confirmation email
+              const transporter = nodemailer.createTransport(config.get('mail'))
+              transporter.sendMail({
+                from: config.get('mail.from'),
+                to: user.email || '',
+                subject: 'Your Password Was Changed',
+                text: `Hello ${user.email},\n\nYour password has been successfully changed. If this was not you, please contact support immediately.\n`
+              }).catch(console.error)
               res.json({ user })
             }).catch((error: unknown) => {
               next(error)
