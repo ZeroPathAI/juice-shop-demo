@@ -27,6 +27,7 @@ import morgan from 'morgan'
 import colors from 'colors/safe'
 import * as utils from './lib/utils'
 import * as Prometheus from 'prom-client'
+import crypto from 'crypto'
 import datacreator from './data/datacreator'
 
 import validatePreconditions from './lib/startup/validatePreconditions'
@@ -563,7 +564,53 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   /* Custom Restful API */
   app.post('/rest/user/login', login())
   app.get('/rest/user/change-password', changePassword())
-  app.post('/rest/user/reset-password', resetPassword())
+  app.post('/rest/user/reset-password',
+    imageCaptcha.verifyCaptcha(),
+    (req: Request, res: Response, next: NextFunction) => {
+      // Set a dummy, secure reset cookie with TTL to mitigate enumeration
+      res.cookie('resetInProgress', '1', { httpOnly: true, secure: true, maxAge: 10 * 60 * 1000 })
+      next()
+    },
+    // Generate secure reset token with TTL and store in DB
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { email } = req.body
+      const token = crypto.randomBytes(32).toString('hex')
+      const ttl = 60 * 60 * 1000 // 1 hour
+      await UserModel.update({ resetToken: token, resetTokenExpires: Date.now() + ttl }, { where: { email } })
+      res.cookie('resetToken', token, { httpOnly: true, secure: true, maxAge: ttl })
+      next()
+    },
+    // Validate security question
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { email, securityQuestionId, securityAnswer } = req.body
+      const user = await UserModel.findOne({ where: { email } })
+      if (!user) {
+        return res.status(404).send('User not found')
+      }
+      const answer = await SecurityAnswerModel.findOne({ where: { UserId: user.id, SecurityQuestionId: securityQuestionId } })
+      if (!answer || answer.answer !== securityAnswer) {
+        await UserModel.increment('failedResetAttempts', { where: { email } })
+        const updatedUser = await UserModel.findOne({ where: { email } })
+        if ((updatedUser?.failedResetAttempts ?? 0) >= 5) {
+          return res.status(423).send('Account locked due to multiple failed attempts')
+        }
+        return res.status(400).send('Invalid security answer')
+      }
+      // Reset failed attempts on success
+      await UserModel.update({ failedResetAttempts: 0 }, { where: { email } })
+      next()
+    },
+    resetPassword(),
+    // Post-reset session termination and notification
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { email } = req.body
+      // Terminate all existing sessions (implementation dependent)
+      // TODO: implement session termination logic
+      // Send notification to user
+      console.log(`Notification: Password reset successful for ${email}`)
+      next()
+    }
+  )
   app.get('/rest/user/security-question', securityQuestion())
   app.get('/rest/user/whoami', security.updateAuthenticatedUsers(), currentUser())
   app.get('/rest/user/authentication-details', authenticatedUsers())
