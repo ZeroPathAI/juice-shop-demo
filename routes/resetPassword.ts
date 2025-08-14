@@ -45,7 +45,8 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          security.hmac(answer) // dummy operation to mitigate timing attacks
+          res.status(401).send(res.__('Invalid email or security answer.'))
         }
       }).catch((error: unknown) => {
         next(error)
