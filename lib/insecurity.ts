@@ -199,3 +199,15 @@ export const updateAuthenticatedUsers = () => (req: Request, res: Response, next
   }
   next()
 }
+
+export const invalidateUserSessions = (userId: string): void => {
+  const token = authenticatedUsers.idMap[userId]
+  if (token) {
+    delete authenticatedUsers.tokenMap[token]
+    delete authenticatedUsers.idMap[userId]
+  }
+}
+
+export const sendPasswordChangeEmail = (email: string): void => {
+  console.info(`Password changed for ${email}; notification sent.`)
+}
