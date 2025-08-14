@@ -1,3 +1,5 @@
+import { rateLimit } from 'express-rate-limit'
+import tokenManager from '../middleware/tokenManager'
 /** Authorization **/
   /* Baskets: Unauthorized users are not allowed to access baskets */
   app.use('/rest/basket', security.isAuthorized(), security.appendUserId())
@@ -14,9 +16,22 @@
     .delete(security.denyAll())
 
   /* PasswordResets: allow users to request a password reset token */
-  app.post('/api/PasswordResets', passwordReset.requestReset())
+  app.post('/api/PasswordResets',
+    security.captcha(),
+    rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }),
+    security.preventEnumeration(),
+    passwordReset.requestReset()
+  )
   /* PasswordResets: allow users to reset password using a valid token */
-  app.post('/api/PasswordResets/:token', passwordReset.resetPassword())
+  app.post('/api/PasswordResets/:token',
+    security.captcha(),
+    tokenManager.validateToken(),
+    tokenManager.ensureNotExpired(),
+    passwordReset.securityQuestionValidation(),
+    passwordReset.resetPassword(),
+    passwordReset.invalidateSessions(),
+    passwordReset.sendConfirmationEmail()
+  )
   /* Products: Only GET is allowed in order to view products */
   app.post('/api/Products', security.isAuthorized())
   app.delete('/api/Products/:id', security.denyAll())
