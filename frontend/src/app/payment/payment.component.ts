@@ -182,7 +182,6 @@ export class PaymentComponent implements OnInit {
         this.ngZone.run(async () => await this.router.navigate(['/wallet']))
         this.snackBarHelperService.open('CHARGED_WALLET', 'confirmBar')
       }, (err) => {
-        console.log(err)
         this.snackBarHelperService.open(err.error?.message, 'errorBar')
       })
     } else if (this.mode === 'deluxe') {
@@ -190,7 +189,7 @@ export class PaymentComponent implements OnInit {
         localStorage.setItem('token', data.token)
         this.cookieService.put('token', data.token)
         this.ngZone.run(async () => await this.router.navigate(['/deluxe-membership']))
-      }, (err) => { console.log(err) })
+      }, (err) => { /* Error suppressed in production */ })
     } else {
       if (this.paymentMode === 'wallet') {
         if (this.walletBalance < this.totalPrice) {
