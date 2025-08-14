@@ -15,7 +15,7 @@ const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
 module.exports = function resetPassword () {
-  return ({ body, connection }: Request, res: Response, next: NextFunction) => {
+  return async ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
     const answer = body.answer
     const newPassword = body.new
@@ -24,6 +24,17 @@ module.exports = function resetPassword () {
     const captchaToken = body.captcha
     if (!captchaToken) {
       res.status(401).send(res.__('Captcha verification required.'))
+      return
+    }
+    let captchaValid: boolean
+    try {
+      captchaValid = await security.verifyCaptcha(captchaToken)
+    } catch (error) {
+      next(error)
+      return
+    }
+    if (!captchaValid) {
+      res.status(401).send(res.__('Captcha verification failed.'))
       return
     }
     if (!email || !answer) {
