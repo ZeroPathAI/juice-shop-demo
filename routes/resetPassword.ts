@@ -14,6 +14,10 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+function setResetRequestCookie(res: Response) {
+  res.cookie('resetRequest', '1', { maxAge: 600000, httpOnly: true, sameSite: 'Strict' })
+}
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
@@ -21,10 +25,13 @@ module.exports = function resetPassword () {
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
+      setResetRequestCookie(res)
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
+      setResetRequestCookie(res)
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
+      setResetRequestCookie(res)
       res.status(401).send(res.__('New and repeated password do not match.'))
     } else {
       SecurityAnswerModel.findOne({
@@ -37,6 +44,7 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
+              setResetRequestCookie(res)
               res.json({ user })
             }).catch((error: unknown) => {
               next(error)
@@ -45,9 +53,10 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
         }
       }).catch((error: unknown) => {
+        setResetRequestCookie(res)
         next(error)
       })
     }
