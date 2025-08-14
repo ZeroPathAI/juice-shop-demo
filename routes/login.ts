@@ -22,6 +22,9 @@ const MAX_FAILED_LOGIN_ATTEMPTS = 5
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
+    // reset failed login counter on successful login
+    const key = res.req.ip + ':' + (user.data.email || '')
+    delete failedLoginAttempts[key]
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
