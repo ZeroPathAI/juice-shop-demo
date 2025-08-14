@@ -1,7 +1,10 @@
 import {BasketModel} from "../../../models/basket";
+const MAX_FAILED_ATTEMPTS = 5;
+const failedLoginAttempts = new Map<string, number>();
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
+    failedLoginAttempts.delete(user.data.email)
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
         const token = security.authorize(user)
@@ -33,7 +36,17 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const emailKey = req.body.email || ''
+          const attempts = (failedLoginAttempts.get(emailKey) || 0) + 1
+          failedLoginAttempts.set(emailKey, attempts)
+          if (attempts > MAX_FAILED_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many failed login attempts. Please try again later.'))
+          }
+          const delay = Math.min(attempts * 1000, 5000)
+          setTimeout(() => {
+            res.status(401).send(res.__('Invalid email or password.'))
+          }, delay)
+          return
         }
       }).catch((error: Error) => {
         next(error)
