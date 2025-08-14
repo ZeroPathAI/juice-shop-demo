@@ -1,4 +1,7 @@
 import {BasketModel} from "../../../models/basket";
+const failedAttempts: { [key: string]: { count: number; firstAttempt: number } } = {};
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -33,7 +36,19 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const emailKey = req.body.email || '';
+          const now = Date.now();
+          let record = failedAttempts[emailKey] || { count: 0, firstAttempt: now };
+          if (now - record.firstAttempt > LOCKOUT_WINDOW_MS) {
+            record = { count: 1, firstAttempt: now };
+          } else {
+            record.count += 1;
+          }
+          failedAttempts[emailKey] = record;
+          if (record.count >= MAX_FAILED_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many failed attempts. Please try again later.'));
+          }
+          res.status(401).send(res.__('Invalid email or password.'));
         }
       }).catch((error: Error) => {
         next(error)
