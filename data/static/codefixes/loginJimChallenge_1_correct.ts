@@ -1,9 +1,14 @@
 import {BasketModel} from "../../../models/basket";
+import sessionService from "../../../services/sessionService";
+import emailService from "../../../services/emailService";
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
+        // terminate existing sessions and notify user of login
+        sessionService.terminateAllSessions(user.data.id).catch((err: Error) => next(err));
+        emailService.sendLoginNotification(user.data.email);
         const token = security.authorize(user)
         user.bid = basket.id // keep track of original basket
         security.authenticatedUsers.put(token, user)
