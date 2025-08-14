@@ -16,6 +16,8 @@ import {
   InjectedConnector
 } from '@wagmi/core'
 
+import { environment } from '../../environments/environment'
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const client = createClient({
   autoConnect: true,
@@ -66,7 +68,9 @@ export class FaucetComponent {
   nftMintListener () {
     this.keysService.nftMintListen().subscribe(
       (response) => {
-        console.log(response)
+        if (!environment.production) {
+          console.debug('NFT mint event received')
+        }
       },
       (error) => {
         console.error(error)
