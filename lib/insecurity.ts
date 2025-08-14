@@ -6,7 +6,7 @@
 import fs from 'fs'
 import crypto from 'crypto'
 import { type Request, type Response, type NextFunction } from 'express'
-import { type UserModel } from 'models/user'
+import { UserModel } from '../models/user'
 import expressJwt from 'express-jwt'
 import jwt from 'jsonwebtoken'
 import jws from 'jws'
@@ -183,6 +183,25 @@ export const appendUserId = () => {
       res.status(401).json({ status: 'error', message: error })
     }
   }
+}
+
+export const MAX_FAILED_ANSWER_ATTEMPTS = 5
+
+export async function checkAndIncrementFailedAttempts(userId: number): Promise<boolean> {
+  const user = await UserModel.findByPk(userId)
+  if (!user) {
+    return false
+  }
+  if (user.locked) {
+    return true
+  }
+  const newCount = (user.failedAnswerAttempts || 0) + 1
+  const updates: any = { failedAnswerAttempts: newCount }
+  if (newCount >= MAX_FAILED_ANSWER_ATTEMPTS) {
+    updates.locked = true
+  }
+  await user.update(updates)
+  return updates.locked === true
 }
 
 export const updateAuthenticatedUsers = () => (req: Request, res: Response, next: NextFunction) => {

@@ -32,6 +32,8 @@ InferCreationAttributes<User>
   declare profileImage: CreationOptional<string>
   declare totpSecret: CreationOptional<string>
   declare isActive: CreationOptional<boolean>
+  declare failedAnswerAttempts: CreationOptional<number>
+  declare locked: CreationOptional<boolean>
 }
 
 const UserModelInit = (sequelize: Sequelize) => { // vuln-code-snippet start weakPasswordChallenge
@@ -117,6 +119,14 @@ const UserModelInit = (sequelize: Sequelize) => { // vuln-code-snippet start wea
       isActive: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+      },
+      failedAnswerAttempts: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      },
+      locked: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
       }
     },
     {
