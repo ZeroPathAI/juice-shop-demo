@@ -13,6 +13,7 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+const emailService = require('../lib/emailService')
 
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
@@ -37,6 +38,11 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
+              security.terminateSessions(user.id)
+              emailService.sendPasswordChangeNotification(user.email)
+                .catch((err: unknown) => {
+                  console.error('Password change notification error for ' + user.email, err)
+                })
               res.json({ user })
             }).catch((error: unknown) => {
               next(error)
