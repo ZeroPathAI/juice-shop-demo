@@ -36,6 +36,7 @@ module.exports = function resetPassword () {
         if ((data != null) && security.hmac(answer) === data.answer) {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
+              user.update({ failedAnswerAttempts: 0, locked: false }).catch(() => {})
               verifySecurityAnswerChallenges(user, answer)
               res.json({ user })
             }).catch((error: unknown) => {
@@ -45,7 +46,15 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          security.checkAndIncrementFailedAttempts(data?.UserId).then((isLocked: boolean) => {
+            if (isLocked) {
+              res.status(423).send(res.__('Account locked due to too many failed attempts.'))
+            } else {
+              res.status(401).send(res.__('Wrong answer to security question.'))
+            }
+          }).catch((error: unknown) => {
+            next(error)
+          })
         }
       }).catch((error: unknown) => {
         next(error)
