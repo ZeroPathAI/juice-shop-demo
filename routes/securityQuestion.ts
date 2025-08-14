@@ -7,11 +7,17 @@ import { type Request, type Response, type NextFunction } from 'express'
 import { SecurityAnswerModel } from '../models/securityAnswer'
 import { UserModel } from '../models/user'
 import { SecurityQuestionModel } from '../models/securityQuestion'
+import { verifyCaptcha } from '../lib/verifyCaptcha'
 
 module.exports = function securityQuestion () {
-  return ({ query }: Request, res: Response, next: NextFunction) => {
-    const email = query.email
-    SecurityAnswerModel.findOne({
+  return (req: Request, res: Response, next: NextFunction) => {
+    const email = req.query.email
+    const responseToken = req.query.captchaToken?.toString()
+    if (!responseToken) {
+      return res.status(400).json({ error: 'Missing CAPTCHA token' })
+    }
+    verifyCaptcha(responseToken).then(() => {
+      SecurityAnswerModel.findOne({
       include: [{
         model: UserModel,
         where: { email: email?.toString() }
