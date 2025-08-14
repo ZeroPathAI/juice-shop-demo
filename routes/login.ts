@@ -16,6 +16,11 @@ import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
 
+const failedLoginAttempts = new Map<string, number>()
+const lockoutExpiry = new Map<string, number>()
+const MAX_FAILED_LOGIN_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -50,6 +55,14 @@ module.exports = function login () {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
+          const identifier = req.body.email || req.ip
+          const attempts = (failedLoginAttempts.get(identifier) || 0) + 1
+          failedLoginAttempts.set(identifier, attempts)
+          if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+            lockoutExpiry.set(identifier, Date.now() + LOCKOUT_DURATION_MS)
+            return res.status(429).send(res.__('Too many failed login attempts. Try again later.'))
+          }
+          res.set('X-Remaining-Attempts', (MAX_FAILED_LOGIN_ATTEMPTS - attempts).toString())
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
