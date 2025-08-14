@@ -66,7 +66,7 @@ export class FaucetComponent {
   nftMintListener () {
     this.keysService.nftMintListen().subscribe(
       (response) => {
-        console.log(response)
+        console.debug('NFT mint event received')
       },
       (error) => {
         console.error(error)
