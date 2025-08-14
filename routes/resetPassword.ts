@@ -20,6 +20,10 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const captchaResponse = body['g-recaptcha-response']
+    if (!captchaResponse) {
+      return res.status(401).send(res.__('CAPTCHA is required.'))
+    }
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
