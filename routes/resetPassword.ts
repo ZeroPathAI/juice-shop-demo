@@ -14,6 +14,21 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+function verifyResetToken(token: string, email: string): boolean {
+  // TODO: implement token verification and expiration logic
+  return false
+}
+
+function validateCaptcha(captchaResponse: string): boolean {
+  // TODO: implement CAPTCHA validation logic
+  return false
+}
+
+function accountLocked(email: string): boolean {
+  // TODO: implement account lockout logic
+  return false
+}
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
@@ -26,6 +41,12 @@ module.exports = function resetPassword () {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
+    } else if (!body.token || !verifyResetToken(body.token, email)) {
+      res.status(401).send(res.__('Reset token is required or invalid.'))
+    } else if (!body.captcha || !validateCaptcha(body.captcha)) {
+      res.status(401).send(res.__('Captcha validation failed.'))
+    } else if (accountLocked(email)) {
+      res.status(403).send(res.__('Account is locked due to multiple failed attempts.'))
     } else {
       SecurityAnswerModel.findOne({
         include: [{
@@ -37,6 +58,7 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
+              console.log(`Notification: Password for user ${user.email} has been reset.`)
               res.json({ user })
             }).catch((error: unknown) => {
               next(error)
