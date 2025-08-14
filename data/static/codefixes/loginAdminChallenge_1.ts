@@ -1,7 +1,11 @@
 import {BasketModel} from "../../../models/basket";
 
 module.exports = function login () {
+  // Track failed login attempts per email
+  const loginFailures: Record<string, number> = {}
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
+    // reset failures on successful login
+    delete loginFailures[user.data.email]
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
         const token = security.authorize(user)
@@ -14,6 +18,11 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    const email = req.body.email || ''
+    // Throttle login attempts to prevent brute-force
+    if (loginFailures[email] >= 5) {
+      return res.status(429).send(res.__('Too many login attempts. Try again later.'))
+    }
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
@@ -21,6 +30,8 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
+          // reset failures on valid password
+          delete loginFailures[email]
           res.status(401).json({
             status: 'totp_token_required',
             data: {
@@ -33,6 +44,7 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
+          loginFailures[email] = (loginFailures[email] || 0) + 1
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
