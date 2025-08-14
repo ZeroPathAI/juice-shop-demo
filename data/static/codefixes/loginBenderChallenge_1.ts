@@ -1,6 +1,11 @@
 import {BasketModel} from "../../../models/basket";
 
 module.exports = function login () {
+  const MAX_FAILED_LOGIN = 5
+  const LOCK_TIME_MS = 15 * 60 * 1000 // 15 minutes
+  const failedLoginAttempts: Map<string, number> = new Map()
+  const lockoutExpiry: Map<string, number> = new Map()
+
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
@@ -14,6 +19,12 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    const email = req.body.email || ''
+    const now = Date.now()
+    const lockUntil = lockoutExpiry.get(email) || 0
+    if (now < lockUntil) {
+      return res.status(423).send(res.__('Account locked due to multiple failed login attempts.'))
+    }
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
@@ -33,7 +44,14 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const attempts = (failedLoginAttempts.get(req.body.email) || 0) + 1
+          failedLoginAttempts.set(req.body.email, attempts)
+          if (attempts >= MAX_FAILED_LOGIN) {
+            lockoutExpiry.set(req.body.email, Date.now() + LOCK_TIME_MS)
+            failedLoginAttempts.delete(req.body.email)
+            return res.status(423).send(res.__('Account locked due to multiple failed login attempts.'))
+          }
+          return res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
         next(error)
