@@ -45,6 +45,8 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
+          // lock account after failed security answer attempts
+          security.lockAccount(data.UserId)
           res.status(401).send(res.__('Wrong answer to security question.'))
         }
       }).catch((error: unknown) => {
