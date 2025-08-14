@@ -45,7 +45,8 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          // Prevent username and answer enumeration
+          res.status(200).send(res.__('If the information is correct, you will receive an email with password reset instructions.'))
         }
       }).catch((error: unknown) => {
         next(error)
