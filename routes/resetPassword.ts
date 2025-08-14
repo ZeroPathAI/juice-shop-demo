@@ -14,6 +14,11 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+// track failed security answer attempts per user
+const failedAttempts: Map<number, { count: number; firstAttempt: Date }> = new Map()
+const MAX_FAILED_ATTEMPTS = 5
+const ATTEMPT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
@@ -45,9 +50,32 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          // lock account after failed security answer attempts
-          security.lockAccount(data.UserId)
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          // handle failed security answer attempts with threshold and time window
+          const userId = data?.UserId
+          if (userId == null) {
+            return res.status(401).send(res.__('Wrong answer to security question.'))
+          }
+          const now = new Date()
+          let record = failedAttempts.get(userId)
+          if (record) {
+            // reset window if expired
+            if (now.getTime() - record.firstAttempt.getTime() > ATTEMPT_WINDOW_MS) {
+              record = { count: 1, firstAttempt: now }
+            } else {
+              record.count += 1
+            }
+          } else {
+            record = { count: 1, firstAttempt: now }
+          }
+          failedAttempts.set(userId, record)
+          if (record.count >= MAX_FAILED_ATTEMPTS) {
+            try {
+              security.lockAccount(userId)
+            } catch (err) {
+              console.error('Failed to lock account for user', userId, err)
+            }
+          }
+          return res.status(401).send(res.__('Wrong answer to security question.'))
         }
       }).catch((error: unknown) => {
         next(error)
