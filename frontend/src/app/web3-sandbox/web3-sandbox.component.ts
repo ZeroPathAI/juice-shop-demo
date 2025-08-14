@@ -295,13 +295,10 @@ contract HelloWorld {
         this.session = false
         this.snackBarHelperService.open('PLEASE_CONNECT_TO_SEPOLIA_NETWORK', 'errorBar')
       } else {
-        console.log('Should show ethereum chain now')
         this.session = true
       }
-      console.log('session', this.session)
       this.changeDetectorRef.detectChanges()
     } catch (err) {
-      console.log('An error occured')
     }
   }
 }
