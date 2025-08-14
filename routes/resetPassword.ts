@@ -13,6 +13,8 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+import { PasswordResetTokenModel } from '../models/passwordResetToken'
+import { Op } from 'sequelize'
 
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
@@ -20,12 +22,15 @@ module.exports = function resetPassword () {
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    const token = body.token
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
+    } else if (!token || token === 'undefined') {
+      res.status(401).send(res.__('Reset token cannot be empty.'))
     } else {
       SecurityAnswerModel.findOne({
         include: [{
@@ -34,13 +39,22 @@ module.exports = function resetPassword () {
         }]
       }).then((data: SecurityAnswerModel | null) => {
         if ((data != null) && security.hmac(answer) === data.answer) {
-          UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
-            user?.update({ password: newPassword }).then((user: UserModel) => {
-              verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
-            }).catch((error: unknown) => {
-              next(error)
-            })
+          PasswordResetTokenModel.findOne({ where: { token, used: false, expiresAt: { [Op.gt]: new Date() } } }).then((tokenRecord: any) => {
+            if (!tokenRecord) {
+              res.status(401).send(res.__('Invalid or expired token.'))
+            } else {
+              UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
+                user?.update({ password: newPassword }).then((user: UserModel) => {
+                  verifySecurityAnswerChallenges(user, answer)
+                  tokenRecord.update({ used: true }).catch(() => {})
+                  res.json({ user })
+                }).catch((error: unknown) => {
+                  next(error)
+                })
+              }).catch((error: unknown) => {
+                next(error)
+              })
+            }
           }).catch((error: unknown) => {
             next(error)
           })
