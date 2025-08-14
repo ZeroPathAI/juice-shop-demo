@@ -12,7 +12,15 @@ import { challenges } from '../data/datacache'
 
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
+import { randomBytes } from 'crypto'
 const security = require('../lib/insecurity')
+
+const RESET_COOKIE_OPTIONS = { httpOnly: true, secure: true, maxAge: 900000 }
+
+function setResetCookie(res: Response) {
+  const token = randomBytes(16).toString('hex')
+  res.cookie('resetRequest', token, RESET_COOKIE_OPTIONS)
+}
 
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
@@ -21,10 +29,13 @@ module.exports = function resetPassword () {
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
+      setResetCookie(res)
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
+      setResetCookie(res)
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
+      setResetCookie(res)
       res.status(401).send(res.__('New and repeated password do not match.'))
     } else {
       SecurityAnswerModel.findOne({
@@ -45,7 +56,7 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.cookie('resetRequest', '1', { httpOnly: true })
+          setResetCookie(res)
           res.status(401).send(res.__('Wrong answer to security question.'))
         }
       }).catch((error: unknown) => {
