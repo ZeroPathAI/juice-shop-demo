@@ -56,6 +56,7 @@ module.exports = function resetPassword () {
           next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
         }
       }).catch((error: unknown) => {
+        setResetRequestCookie(res)
         next(error)
       })
     }
