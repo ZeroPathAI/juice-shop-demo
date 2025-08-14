@@ -21,6 +21,13 @@ module.exports = function login () {
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
+    const email = req.body.email || '';
+    const attempt = failedLoginAttempts.get(email);
+    if (attempt && attempt.lockoutExpiry > Date.now()) {
+      return res.status(429).send(res.__('Too many login attempts. Please try again later.'));
+    } else if (attempt && attempt.lockoutExpiry <= Date.now()) {
+      failedLoginAttempts.delete(email);
+    }
     models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
