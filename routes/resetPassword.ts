@@ -14,18 +14,38 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+const resetPasswordAttempts: Record<string,{ count: number; timestamp: number }> = {}
+const MIN_RESPONSE_TIME = 500
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
+    const start = Date.now()
+    const ip = connection.remoteAddress || ''
+    const attempt = resetPasswordAttempts[ip] || { count: 0, timestamp: start }
+    if (Date.now() - attempt.timestamp > 60000) { attempt.count = 0; attempt.timestamp = start }
+    attempt.count++
+    resetPasswordAttempts[ip] = attempt
+    if (attempt.count > 5) {
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => res.status(429).send(res.__('Too many requests. Please try again later.')), delay)
+    }
     const email = body.email
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
-      next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => next(new Error('Blocked illegal activity')), delay)
     } else if (!newPassword || newPassword === 'undefined') {
-      res.status(401).send(res.__('Password cannot be empty.'))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => res.status(401).send(res.__('Password cannot be empty.')), delay)
     } else if (newPassword !== repeatPassword) {
-      res.status(401).send(res.__('New and repeated password do not match.'))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => res.status(401).send(res.__('New and repeated password do not match.')), delay)
     } else {
       SecurityAnswerModel.findOne({
         include: [{
@@ -37,7 +57,8 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
+              const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+              return setTimeout(() => res.json({ user }), delay)
             }).catch((error: unknown) => {
               next(error)
             })
@@ -45,7 +66,9 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          res.cookie('session','invalid',{ httpOnly: true })
+          const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+          return setTimeout(() => res.status(401).send(res.__('Invalid password reset request.')), delay)
         }
       }).catch((error: unknown) => {
         next(error)
