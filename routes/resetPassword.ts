@@ -9,6 +9,7 @@ import type { Memory as MemoryConfig } from '../lib/config.types'
 import { SecurityAnswerModel } from '../models/securityAnswer'
 import { UserModel } from '../models/user'
 import { challenges } from '../data/datacache'
+import nodemailer from 'nodemailer'
 
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
