@@ -13,17 +13,34 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+const RATE_LIMIT_WINDOW_MS = 60 * 1000
+const MAX_RESET_PASSWORD_REQUESTS = 5
+const resetPasswordAttempts: Record<string, { count: number, firstRequest: number }> = {}
 
 module.exports = function resetPassword () {
-  return ({ body, connection }: Request, res: Response, next: NextFunction) => {
+  return async ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
-    } else if (!body.captcha) {
-      res.status(401).send(res.__('Captcha verification failed.'))
+    } else {
+      const ip = connection.remoteAddress
+      const now = Date.now()
+      let attempt = resetPasswordAttempts[ip]
+      if (!attempt || now - attempt.firstRequest > RATE_LIMIT_WINDOW_MS) {
+        resetPasswordAttempts[ip] = { count: 1, firstRequest: now }
+      } else {
+        attempt.count++
+        if (attempt.count > MAX_RESET_PASSWORD_REQUESTS) {
+          return res.status(429).send(res.__('Too many reset attempts, please try again later.'))
+        }
+      }
+      const captchaValid = await security.verifyCaptcha(body.captcha)
+      if (!captchaValid) {
+        return res.status(401).send(res.__('Captcha verification failed.'))
+      }
     } else if (!newPassword || newPassword === 'undefined') {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
