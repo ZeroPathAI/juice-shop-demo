@@ -1,4 +1,6 @@
 import {BasketModel} from "../../../models/basket";
+const MAX_FAILED_ATTEMPTS = 5;
+const failedLoginAttempts: Record<string, number> = {};
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -19,6 +21,7 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
+          failedLoginAttempts[user.data.email] = 0;
           res.status(401).json({
             status: 'totp_token_required',
             data: {
@@ -29,9 +32,15 @@ module.exports = function login () {
             }
           })
         } else if (user.data?.id) {
+          failedLoginAttempts[user.data.email] = 0;
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const email = req.body.email;
+          failedLoginAttempts[email] = (failedLoginAttempts[email] || 0) + 1;
+          if (failedLoginAttempts[email] >= MAX_FAILED_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many failed login attempts. Please try again later.'));
+          }
+          res.status(401).send(res.__('Invalid email or password.'));
         }
       }).catch((error: Error) => {
         next(error)
