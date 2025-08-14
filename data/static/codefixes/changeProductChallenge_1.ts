@@ -1,4 +1,7 @@
 /** Authorization **/
+
+// Protect login endpoint against brute-force attacks
+app.post('/rest/user/login', security.loginRateLimiter(), auth.login);
   /* Baskets: Unauthorized users are not allowed to access baskets */
   app.use('/rest/basket', security.isAuthorized(), security.appendUserId())
   /* BasketItems: API only accessible for authenticated users */
