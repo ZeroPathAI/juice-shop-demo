@@ -13,6 +13,9 @@ import { challenges } from '../data/datacache'
 
 const security = require('../lib/insecurity')
 const otplib = require('otplib')
+const totpFailures: Record<number, { count: number; firstAttempt: number }> = {}
+const MAX_TOTP_ATTEMPTS = 5
+const BLOCK_TIME = 600000
 
 otplib.authenticator.options = {
   // Accepts tokens as valid even when they are 30sec to old or to new
@@ -40,6 +43,17 @@ async function verify (req: Request, res: Response) {
     const plainUser = utils.queryResultToJson(user)
 
     if (!isValid) {
+      const now = Date.now()
+      let failureInfo = totpFailures[userId] || { count: 0, firstAttempt: now }
+      if (now - failureInfo.firstAttempt > BLOCK_TIME) {
+        failureInfo.count = 0
+        failureInfo.firstAttempt = now
+      }
+      failureInfo.count++
+      totpFailures[userId] = failureInfo
+      if (failureInfo.count > MAX_TOTP_ATTEMPTS) {
+        return res.status(429).send('Too Many Requests')
+      }
       return res.status(401).send()
     }
     challengeUtils.solveIf(challenges.twoFactorAuthUnsafeSecretStorageChallenge, () => { return user.email === 'wurstbrot@' + config.get<string>('application.domain') })
