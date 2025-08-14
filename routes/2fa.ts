@@ -20,6 +20,11 @@ otplib.authenticator.options = {
   window: 1
 }
 
+const MAX_TOTP_FAILED_ATTEMPTS = 5
+const TOTP_LOCK_TIME = 5 * 60 * 1000 // 5 minutes in ms
+interface TotpAttempt { count: number; firstAttempt: number }
+const totpFailedAttempts: Record<number, TotpAttempt> = {}
+
 async function verify (req: Request, res: Response) {
   const { tmpToken, totpToken } = req.body
 
@@ -39,9 +44,24 @@ async function verify (req: Request, res: Response) {
 
     const plainUser = utils.queryResultToJson(user)
 
+    // Brute force protection for TOTP
+    const attempt = totpFailedAttempts[user.id] || { count: 0, firstAttempt: Date.now() }
+    if (Date.now() - attempt.firstAttempt > TOTP_LOCK_TIME) {
+      attempt.count = 0
+      attempt.firstAttempt = Date.now()
+    }
+    if (attempt.count >= MAX_TOTP_FAILED_ATTEMPTS) {
+      return res.status(429).send()
+    }
     if (!isValid) {
+      attempt.count++
+      totpFailedAttempts[user.id] = attempt
+      // Delay increases with each failed attempt
+      await new Promise(resolve => setTimeout(resolve, attempt.count * 1000))
       return res.status(401).send()
     }
+    // Reset on success
+    delete totpFailedAttempts[user.id]
     challengeUtils.solveIf(challenges.twoFactorAuthUnsafeSecretStorageChallenge, () => { return user.email === 'wurstbrot@' + config.get<string>('application.domain') })
 
     const [basket] = await BasketModel.findOrCreate({ where: { UserId: userId } })
