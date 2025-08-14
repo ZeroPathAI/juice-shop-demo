@@ -13,6 +13,8 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+const MAX_SECURITY_ANSWER_ATTEMPTS = 5
+const failedSecurityAnswerAttempts: Record<string, number> = {}
 
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
@@ -45,6 +47,10 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
+          failedSecurityAnswerAttempts[email] = (failedSecurityAnswerAttempts[email] || 0) + 1
+          if (failedSecurityAnswerAttempts[email] >= MAX_SECURITY_ANSWER_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many failed attempts. Please try again later.'))
+          }
           res.status(401).send(res.__('Wrong answer to security question.'))
         }
       }).catch((error: unknown) => {
