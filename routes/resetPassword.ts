@@ -13,13 +13,45 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+import https from 'https'
+import { URLSearchParams } from 'url'
 
 module.exports = function resetPassword () {
-  return ({ body, connection }: Request, res: Response, next: NextFunction) => {
+  return async ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
     const answer = body.answer
     const newPassword = body.new
     const repeatPassword = body.repeat
+    // Verify reCAPTCHA token
+    const captchaToken = body.captchaToken
+    if (!captchaToken) {
+      return res.status(401).send(res.__('Captcha token missing.'))
+    }
+    // Verify token with Google reCAPTCHA API
+    const verificationResponse = await new Promise((resolve, reject) => {
+      const secret = config.get<string>('recaptcha.secret')
+      const postData = new URLSearchParams({ secret, response: captchaToken }).toString()
+      const options = {
+        hostname: 'www.google.com',
+        path: '/recaptcha/api/siteverify',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      }
+      const req = https.request(options, res2 => {
+        let data = ''
+        res2.on('data', chunk => { data += chunk })
+        res2.on('end', () => resolve(JSON.parse(data)))
+      })
+      req.on('error', reject)
+      req.write(postData)
+      req.end()
+    })
+    if (!(verificationResponse as any).success) {
+      return res.status(401).send(res.__('Captcha verification failed.'))
+    }
     if (!email || !answer) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
