@@ -13,6 +13,8 @@ import { challenges } from '../data/datacache'
 import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
+import crypto from 'crypto'
+const passwordResetTokens: Map<string, { userId: number; expires: Date }> = new Map()
 
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
@@ -34,6 +36,17 @@ module.exports = function resetPassword () {
         }]
       }).then((data: SecurityAnswerModel | null) => {
         if ((data != null) && security.hmac(answer) === data.answer) {
+          if (!body.token) {
+            const token = crypto.randomBytes(32).toString('hex')
+            const expires = new Date(Date.now() + 3600000) // 1 hour
+            passwordResetTokens.set(token, { userId: data.UserId, expires })
+            return res.json({ token, expires })
+          }
+          const tokenRecord = passwordResetTokens.get(body.token)
+          if (!tokenRecord || tokenRecord.userId !== data.UserId || tokenRecord.expires < new Date()) {
+            return res.status(401).send(res.__('Invalid or expired token.'))
+          }
+          passwordResetTokens.delete(body.token)
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
