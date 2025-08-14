@@ -561,7 +561,15 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   }
 
   /* Custom Restful API */
-  app.post('/rest/user/login', login())
+  app.post('/rest/user/login',
+    new RateLimit({
+      windowMs: 5 * 60 * 1000,
+      max: 5,
+      message: 'Too many login attempts. Please try again later.',
+      keyGenerator({ headers, ip }: { headers: any, ip: any }) { return headers['X-Forwarded-For'] ?? ip }
+    }),
+    login()
+  )
   app.get('/rest/user/change-password', changePassword())
   app.post('/rest/user/reset-password', resetPassword())
   app.get('/rest/user/security-question', securityQuestion())
