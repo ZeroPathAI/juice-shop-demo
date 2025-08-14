@@ -15,10 +15,13 @@ import { challenges } from '../data/datacache'
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
+const failedLoginAttempts: Record<string, { count: number, lastAttempt: number }> = {}
 
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
+    // Reset failed login attempts on successful authentication
+    failedLoginAttempts[user.data.email] = { count: 0, lastAttempt: Date.now() }
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
@@ -33,6 +36,13 @@ module.exports = function login () {
 
   return (req: Request, res: Response, next: NextFunction) => {
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
+    // Brute-force protection: limit failed login attempts per email
+    const emailKey = req.body.email || ''
+    const attemptData = failedLoginAttempts[emailKey] || { count: 0, lastAttempt: 0 }
+    const now = Date.now()
+    if (attemptData.count >= 5 && now - attemptData.lastAttempt < 15 * 60 * 1000) {
+      return res.status(429).send('Too many failed login attempts. Please try again later.')
+    }
     models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
       .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
         const user = utils.queryResultToJson(authenticatedUser)
@@ -50,6 +60,12 @@ module.exports = function login () {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
+          // Increment failed login attempt for brute-force protection
+          {
+            const key = req.body.email || ''
+            const data = failedLoginAttempts[key] || { count: 0, lastAttempt: 0 }
+            failedLoginAttempts[key] = { count: data.count + 1, lastAttempt: Date.now() }
+          }
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
