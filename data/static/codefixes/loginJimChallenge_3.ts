@@ -1,4 +1,7 @@
 import {BasketModel} from "../../../models/basket";
+const loginAttempts: Record<string, { count: number, timer: NodeJS.Timeout | null }> = {};
+const MAX_ATTEMPTS = 5;
+const LOCK_TIME = 15 * 60 * 1000;
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -31,7 +34,17 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const email = req.body.email;
+          const attempt = loginAttempts[email] || { count: 0, timer: null };
+          attempt.count++;
+          if (attempt.count === 1) {
+            attempt.timer = setTimeout(() => { delete loginAttempts[email]; }, LOCK_TIME);
+          }
+          loginAttempts[email] = attempt;
+          if (attempt.count > MAX_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many login attempts. Please try again later.'));
+          }
+          return res.status(401).send(res.__('Invalid email or password.'));
         }
       }).catch((error: Error) => {
         next(error)
