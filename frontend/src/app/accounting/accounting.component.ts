@@ -57,7 +57,7 @@ export class AccountingComponent implements AfterViewInit, OnDestroy {
           quantity: item.quantity
         }
       })
-    }, (err) => { console.log(err) })
+    }, (err) => { this.snackBarHelperService.open('Failed to load quantities.', 'errorBar') })
   }
 
   loadProducts () {
