@@ -184,15 +184,13 @@ export class FaucetComponent {
         this.session = false
         this.snackBarHelperService.open('PLEASE_CONNECT_TO_SEPOLIA_NETWORK', 'errorBar')
       } else {
-        console.log('Should show ethereum chain now')
         this.session = true
         await this.fetchBeeBalance()
         await this.fetchMyBeeBalance()
       }
-      console.log('session', this.session)
       this.changeDetectorRef.detectChanges()
     } catch (err) {
-      console.log(err)
+      // Debug log removed to prevent sensitive information disclosure
     }
   }
 
