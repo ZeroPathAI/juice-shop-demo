@@ -45,6 +45,7 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
+          res.cookie('resetRequest', '1', { httpOnly: true })
           res.status(401).send(res.__('Wrong answer to security question.'))
         }
       }).catch((error: unknown) => {
