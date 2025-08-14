@@ -18,6 +18,11 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    const email = req.body.email || ''
+    // Throttle login attempts to prevent brute-force
+    if (loginFailures[email] >= 5) {
+      return res.status(429).send(res.__('Too many login attempts. Try again later.'))
+    }
     if (req.body.email.match(/.*['-;].*/) || req.body.password.match(/.*['-;].*/)) {
       res.status(451).send(res.__('SQL Injection detected.'))
     }
