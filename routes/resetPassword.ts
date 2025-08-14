@@ -35,11 +35,17 @@ module.exports = function resetPassword () {
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
-      next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => next(new Error('Blocked illegal activity')), delay)
     } else if (!newPassword || newPassword === 'undefined') {
-      res.status(401).send(res.__('Password cannot be empty.'))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => res.status(401).send(res.__('Password cannot be empty.')), delay)
     } else if (newPassword !== repeatPassword) {
-      res.status(401).send(res.__('New and repeated password do not match.'))
+      res.cookie('session','invalid',{ httpOnly: true })
+      const delay = Math.max(MIN_RESPONSE_TIME - (Date.now() - start), 0)
+      return setTimeout(() => res.status(401).send(res.__('New and repeated password do not match.')), delay)
     } else {
       SecurityAnswerModel.findOne({
         include: [{
