@@ -50,7 +50,10 @@ module.exports = function login () {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          // Delay response to mitigate brute-force attacks
+          setTimeout(() => {
+            res.status(401).send(res.__('Invalid email or password.'))
+          }, 1000)
         }
       }).catch((error: Error) => {
         next(error)
