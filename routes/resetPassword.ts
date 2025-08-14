@@ -18,9 +18,10 @@ module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
     const answer = body.answer
+    const question = body.question
     const newPassword = body.new
     const repeatPassword = body.repeat
-    if (!email || !answer) {
+    if (!email || !answer || !question) {
       next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
     } else if (!newPassword || newPassword === 'undefined') {
       res.status(401).send(res.__('Password cannot be empty.'))
@@ -28,6 +29,7 @@ module.exports = function resetPassword () {
       res.status(401).send(res.__('New and repeated password do not match.'))
     } else {
       SecurityAnswerModel.findOne({
+        where: { question },
         include: [{
           model: UserModel,
           where: { email }
