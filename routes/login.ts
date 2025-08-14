@@ -15,6 +15,8 @@ import { challenges } from '../data/datacache'
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
+const MAX_LOGIN_ATTEMPTS = 5
+const failedLoginAttempts: Record<string, number> = {}
 
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
@@ -32,7 +34,11 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    const loginKey = req.body.email || req.ip
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
+    if (failedLoginAttempts[loginKey] >= MAX_LOGIN_ATTEMPTS) {
+      return res.status(429).send(res.__('Too many login attempts. Please try again later.'))
+    }
     models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
       .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
         const user = utils.queryResultToJson(authenticatedUser)
@@ -48,8 +54,10 @@ module.exports = function login () {
           })
         } else if (user.data?.id) {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
+          failedLoginAttempts[loginKey] = 0
           afterLogin(user, res, next)
         } else {
+          failedLoginAttempts[loginKey] = (failedLoginAttempts[loginKey] || 0) + 1
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
