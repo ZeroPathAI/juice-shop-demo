@@ -213,13 +213,13 @@ contract HelloWorld {
         ...inputs,
         transactionOptions
       )
-      console.log(transaction)
+      
 
       if (
         func.outputs.length > 0 &&
         (func.stateMutability === 'view' || func.stateMutability === 'pure')
       ) {
-        console.log('hello')
+        
         const outputValue = transaction[0].toString()
         const updatedFunc = this.contractFunctions.find(
           (f) => f.name === func.name
@@ -231,9 +231,9 @@ contract HelloWorld {
             this.contractFunctions[index] = updatedFunc
           }
         }
-        console.log(func.outputValue)
+        
       }
-      console.log('Invoked:', transaction)
+      
     } catch (error) {
       console.error('Error invoking function', error)
       const updatedFunc = this.contractFunctions.find(
