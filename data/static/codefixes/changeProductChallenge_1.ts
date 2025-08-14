@@ -12,6 +12,11 @@
     .get(security.isAuthorized())
     .put(security.denyAll())
     .delete(security.denyAll())
+
+  /* PasswordResets: allow users to request a password reset token */
+  app.post('/api/PasswordResets', passwordReset.requestReset())
+  /* PasswordResets: allow users to reset password using a valid token */
+  app.post('/api/PasswordResets/:token', passwordReset.resetPassword())
   /* Products: Only GET is allowed in order to view products */
   app.post('/api/Products', security.isAuthorized())
   app.delete('/api/Products/:id', security.denyAll())
