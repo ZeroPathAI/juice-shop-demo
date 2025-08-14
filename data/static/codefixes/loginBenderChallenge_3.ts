@@ -1,5 +1,8 @@
 import {BasketModel} from "../../../models/basket";
 
+const failedLoginAttempts: Record<string, number> = {};
+const MAX_FAILED_ATTEMPTS = 5;
+
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
@@ -7,6 +10,7 @@ module.exports = function login () {
         const token = security.authorize(user)
         user.bid = basket.id // keep track of original basket
         security.authenticatedUsers.put(token, user)
+        delete failedLoginAttempts[user.data.email];
         res.json({ authentication: { token, bid: basket.id, umail: user.data.email } })
       }).catch((error: Error) => {
         next(error)
@@ -31,6 +35,11 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
+          const email = req.body.email;
+          failedLoginAttempts[email] = (failedLoginAttempts[email] || 0) + 1;
+          if (failedLoginAttempts[email] > MAX_FAILED_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many login attempts. Please try again later.'));
+          }
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
