@@ -35,12 +35,17 @@ module.exports = function resetPassword () {
       }).then((data: SecurityAnswerModel | null) => {
         if ((data != null) && security.hmac(answer) === data.answer) {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
-            user?.update({ password: newPassword }).then((user: UserModel) => {
-              verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
-            }).catch((error: unknown) => {
-              next(error)
-            })
+            const token = body.token
+            if (!token || !security.verifyPasswordResetToken(token, email)) {
+              res.status(401).send(res.__('Invalid or missing password reset token.'))
+            } else {
+              user?.update({ password: newPassword }).then((user: UserModel) => {
+                verifySecurityAnswerChallenges(user, answer)
+                res.json({ user })
+              }).catch((error: unknown) => {
+                next(error)
+              })
+            }
           }).catch((error: unknown) => {
             next(error)
           })
