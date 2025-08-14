@@ -563,7 +563,15 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   /* Custom Restful API */
   app.post('/rest/user/login', login())
   app.get('/rest/user/change-password', changePassword())
-  app.post('/rest/user/reset-password', resetPassword())
+  app.post('/rest/user/reset-password',
+    imageCaptcha.verifyCaptcha(),
+    (req: Request, res: Response, next: NextFunction) => {
+      // Set a dummy, secure reset cookie with TTL to mitigate enumeration
+      res.cookie('resetInProgress', '1', { httpOnly: true, secure: true, maxAge: 10 * 60 * 1000 })
+      next()
+    },
+    resetPassword()
+  )
   app.get('/rest/user/security-question', securityQuestion())
   app.get('/rest/user/whoami', security.updateAuthenticatedUsers(), currentUser())
   app.get('/rest/user/authentication-details', authenticatedUsers())
