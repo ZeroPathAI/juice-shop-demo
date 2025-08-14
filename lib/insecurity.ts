@@ -199,3 +199,16 @@ export const updateAuthenticatedUsers = () => (req: Request, res: Response, next
   }
   next()
 }
+
+export const clearSessionsFor = (user: UserModel) => {
+  const token = authenticatedUsers.tokenOf(user)
+  if (token) {
+    delete authenticatedUsers.tokenMap[token]
+    delete authenticatedUsers.idMap[user.id]
+  }
+}
+
+export const sendPasswordResetNotification = (email: string) => {
+  // Placeholder: replace with real email dispatch
+  console.info(`Password reset notification sent to ${email}`)
+}
