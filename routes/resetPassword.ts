@@ -36,6 +36,8 @@ module.exports = function resetPassword () {
         if ((data != null) && security.hmac(answer) === data.answer) {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
+              security.clearSessionsFor(user)
+              security.sendPasswordResetNotification(user.email)
               verifySecurityAnswerChallenges(user, answer)
               res.json({ user })
             }).catch((error: unknown) => {
