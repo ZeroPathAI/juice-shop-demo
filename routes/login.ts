@@ -16,6 +16,9 @@ import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
 
+// In-memory rate limiter for login attempts per IP to mitigate brute-force attacks
+const loginAttempts: { [key: string]: { count: number, lastReset: number } } = {};
+
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -32,6 +35,19 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // Rate limiting to prevent brute-force or credential stuffing attacks
+    const ip = req.ip;
+    const now = Date.now();
+    const limiter = loginAttempts[ip] || { count: 0, lastReset: now };
+    if (now - limiter.lastReset > 60000) {
+      limiter.count = 0;
+      limiter.lastReset = now;
+    }
+    limiter.count++;
+    loginAttempts[ip] = limiter;
+    if (limiter.count > 5) {
+      return res.status(429).send(res.__('Too many login attempts. Please try again later.'));
+    }
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
     models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
       .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
