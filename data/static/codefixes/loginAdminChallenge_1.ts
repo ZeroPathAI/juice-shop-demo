@@ -1,7 +1,11 @@
 import {BasketModel} from "../../../models/basket";
 
 module.exports = function login () {
+  // Track failed login attempts per email
+  const loginFailures: Record<string, number> = {}
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
+    // reset failures on successful login
+    delete loginFailures[user.data.email]
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
         const token = security.authorize(user)
@@ -21,6 +25,8 @@ module.exports = function login () {
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
+          // reset failures on valid password
+          delete loginFailures[email]
           res.status(401).json({
             status: 'totp_token_required',
             data: {
@@ -33,6 +39,7 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
+          loginFailures[email] = (loginFailures[email] || 0) + 1
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
