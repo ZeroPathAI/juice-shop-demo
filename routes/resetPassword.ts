@@ -45,7 +45,7 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          res.status(401).send(res.__('Invalid password reset request.'))
         }
       }).catch((error: unknown) => {
         next(error)
