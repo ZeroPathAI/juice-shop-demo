@@ -21,7 +21,8 @@ module.exports = function resetPassword () {
     const newPassword = body.new
     const repeatPassword = body.repeat
     if (!email || !answer) {
-      next(new Error('Blocked illegal activity by ' + connection.remoteAddress))
+      // Prevent username enumeration
+      res.status(200).send(res.__('If the information is correct, you will receive an email with password reset instructions.'))
     } else if (!newPassword || newPassword === 'undefined') {
       res.status(401).send(res.__('Password cannot be empty.'))
     } else if (newPassword !== repeatPassword) {
