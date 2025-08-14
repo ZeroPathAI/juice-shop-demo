@@ -34,6 +34,8 @@ module.exports = function securityQuestion () {
       }
     }).catch((error: unknown) => {
       next(error)
+    }).catch((error: Error) => {
+      res.status(403).json({ error: 'Invalid CAPTCHA token' })
     })
   }
 }
