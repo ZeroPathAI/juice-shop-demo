@@ -16,6 +16,11 @@ import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
 
+const loginAttempts: Map<string, { attempts: number, lockUntil: number | null }> = new Map()
+const MAX_ATTEMPTS = 5
+const LOCK_TIME = 15 * 60 * 1000
+const CAPTCHA_THRESHOLD = 3
+
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -50,7 +55,27 @@ module.exports = function login () {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          const key = req.body.email || req.ip
+          let entry = loginAttempts.get(key) || { attempts: 0, lockUntil: null }
+          const now = Date.now()
+          if (entry.lockUntil && entry.lockUntil > now) {
+            const retryAfter = Math.ceil((entry.lockUntil - now) / 1000)
+            return res.status(423).json({ status: 'locked', retryAfter })
+          }
+          entry.attempts++
+          const delay = Math.min(Math.pow(2, entry.attempts), 32) * 1000
+          if (entry.attempts >= MAX_ATTEMPTS) {
+            entry.lockUntil = now + LOCK_TIME
+          }
+          loginAttempts.set(key, entry)
+          console.warn(`[login] Failed login attempt for ${key} from IP ${req.ip}, attempt ${entry.attempts}`)
+          setTimeout(() => {
+            res.status(401).json({
+              status: 'Invalid email or password.',
+              captchaRequired: entry.attempts >= CAPTCHA_THRESHOLD,
+              lock: entry.attempts >= MAX_ATTEMPTS
+            })
+          }, delay)
         }
       }).catch((error: Error) => {
         next(error)
