@@ -199,3 +199,11 @@ export const updateAuthenticatedUsers = () => (req: Request, res: Response, next
   }
   next()
 }
+
+export const terminateSessions = (userId: string) => {
+  const token = authenticatedUsers.idMap[userId]
+  if (token) {
+    delete authenticatedUsers.tokenMap[token]
+    delete authenticatedUsers.idMap[userId]
+  }
+}
