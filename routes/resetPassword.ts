@@ -14,8 +14,28 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+const resetAttempts: Record<string, { count: number; firstAttempt: number }> = {}
+const resetWindowMs = 60 * 1000 // 1 minute window
+const resetMaxAttempts = 5 // max attempts per window
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
+    const ip = connection.remoteAddress as string
+    const now = Date.now()
+    const attempt = resetAttempts[ip] || { count: 0, firstAttempt: now }
+
+    if (now - attempt.firstAttempt < resetWindowMs) {
+      attempt.count += 1
+    } else {
+      attempt.count = 1
+      attempt.firstAttempt = now
+    }
+    resetAttempts[ip] = attempt
+
+    if (attempt.count > resetMaxAttempts) {
+      return res.status(429).send(res.__('Too many password reset attempts, please try again later.'))
+    }
+
     const email = body.email
     const answer = body.answer
     const newPassword = body.new
