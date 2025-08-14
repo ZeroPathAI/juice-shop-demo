@@ -16,10 +16,18 @@ import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
 const users = require('../data/datacache').users
 
+// Track failed login attempts per email to enforce lockout
+const failedLoginAttempts: { [key: string]: { count: number, lastAttempt: number } } = {}
+const LOCKOUT_THRESHOLD = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000
+
 // vuln-code-snippet start loginAdminChallenge loginBenderChallenge loginJimChallenge
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
+    // Clear failed login attempts on successful login
+    const userEmail = user.data.email || ''
+    delete failedLoginAttempts[userEmail]
     BasketModel.findOrCreate({ where: { UserId: user.data.id } })
       .then(([basket]: [BasketModel, boolean]) => {
         const token = security.authorize(user)
@@ -33,6 +41,13 @@ module.exports = function login () {
 
   return (req: Request, res: Response, next: NextFunction) => {
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
+    const email = req.body.email || ''
+    const attempt = failedLoginAttempts[email]
+    if (attempt && attempt.count >= LOCKOUT_THRESHOLD && Date.now() - attempt.lastAttempt < LOCKOUT_DURATION_MS) {
+      return res.status(429).send(res.__('Too many login attempts. Please try again later.'))
+    } else if (attempt && Date.now() - attempt.lastAttempt >= LOCKOUT_DURATION_MS) {
+      delete failedLoginAttempts[email]
+    }
     models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
       .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
         const user = utils.queryResultToJson(authenticatedUser)
@@ -50,6 +65,10 @@ module.exports = function login () {
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
+          // Increment failed login attempts
+          const emailFail = req.body.email || ''
+          const prevAttempt = failedLoginAttempts[emailFail]
+          failedLoginAttempts[emailFail] = prevAttempt ? { count: prevAttempt.count + 1, lastAttempt: Date.now() } : { count: 1, lastAttempt: Date.now() }
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
