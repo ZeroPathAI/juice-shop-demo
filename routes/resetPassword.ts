@@ -14,6 +14,10 @@ import challengeUtils = require('../lib/challengeUtils')
 const users = require('../data/datacache').users
 const security = require('../lib/insecurity')
 
+const resetFailures: Record<string, { count: number, firstAttempt: number }> = {}
+const MAX_RESET_ATTEMPTS = 5
+const LOCKOUT_DURATION = 30 * 60 * 1000 // 30 minutes
+
 module.exports = function resetPassword () {
   return ({ body, connection }: Request, res: Response, next: NextFunction) => {
     const email = body.email
@@ -27,6 +31,16 @@ module.exports = function resetPassword () {
     } else if (newPassword !== repeatPassword) {
       res.status(401).send(res.__('New and repeated password do not match.'))
     } else {
+      const now = Date.now()
+      const attempts = resetFailures[email]
+      if (attempts) {
+        if (now - attempts.firstAttempt > LOCKOUT_DURATION) {
+          delete resetFailures[email]
+        } else if (attempts.count >= MAX_RESET_ATTEMPTS) {
+          res.status(429).send(res.__('Too many failed attempts. Try again later.'))
+          return
+        }
+      }
       SecurityAnswerModel.findOne({
         include: [{
           model: UserModel,
@@ -38,6 +52,7 @@ module.exports = function resetPassword () {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
               res.json({ user })
+              delete resetFailures[email]
             }).catch((error: unknown) => {
               next(error)
             })
@@ -45,7 +60,17 @@ module.exports = function resetPassword () {
             next(error)
           })
         } else {
-          res.status(401).send(res.__('Wrong answer to security question.'))
+          const now = Date.now()
+          if (!resetFailures[email]) {
+            resetFailures[email] = { count: 1, firstAttempt: now }
+          } else {
+            resetFailures[email].count++
+          }
+          if (resetFailures[email].count >= MAX_RESET_ATTEMPTS) {
+            res.status(429).send(res.__('Too many failed attempts. Try again later.'))
+          } else {
+            res.status(401).send(res.__('Wrong answer to security question.'))
+          }
         }
       }).catch((error: unknown) => {
         next(error)
