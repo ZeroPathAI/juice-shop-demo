@@ -1,4 +1,7 @@
 import {BasketModel} from "../../../models/basket";
+const failedLoginAttempts = new Map<string, { count: number, lastAttempt: number }>();
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME_MS = 15 * 60 * 1000;
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -31,7 +34,20 @@ module.exports = function login () {
         } else if (user.data?.id) {
           afterLogin(user, res, next)
         } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+          // Record failed login attempt
+          const now = Date.now();
+          const email = req.body.email;
+          let attempt = failedLoginAttempts.get(email) || { count: 0, lastAttempt: now };
+          if (now - attempt.lastAttempt > LOCKOUT_TIME_MS) {
+            attempt = { count: 0, lastAttempt: now };
+          }
+          attempt.count++;
+          attempt.lastAttempt = now;
+          failedLoginAttempts.set(email, attempt);
+          if (attempt.count > MAX_FAILED_LOGIN_ATTEMPTS) {
+            return res.status(429).send(res.__('Too many failed login attempts. Please try again later.'));
+          }
+          res.status(401).send(res.__('Invalid email or password.'));
         }
       }).catch((error: Error) => {
         next(error)
