@@ -8,6 +8,9 @@ import logger from '../lib/logger'
 
 module.exports = function countryMapping (config = require('config')) {
   return (req: Request, res: Response) => {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).send('Forbidden')
+    }
     try {
       const countryMapping = config.get('ctf.countryMapping')
       if (!countryMapping) {
