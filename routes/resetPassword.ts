@@ -37,7 +37,8 @@ module.exports = function resetPassword () {
           UserModel.findByPk(data.UserId).then((user: UserModel | null) => {
             user?.update({ password: newPassword }).then((user: UserModel) => {
               verifySecurityAnswerChallenges(user, answer)
-              res.json({ user })
+              // Only return non-sensitive user data to prevent information disclosure
+              res.json({ user: { id: user.id, email: user.email } })
             }).catch((error: unknown) => {
               next(error)
             })
