@@ -1,4 +1,5 @@
 import {BasketModel} from "../../../models/basket";
+import * as crypto from "crypto";
 
 module.exports = function login () {
   function afterLogin (user: { data: User, bid: number }, res: Response, next: NextFunction) {
@@ -14,25 +15,24 @@ module.exports = function login () {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
-    models.sequelize.query(`SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL`,
-      { bind: [ req.body.email, security.hash(req.body.password) ], model: models.User, plain: true })
+    models.sequelize.query(`SELECT * FROM Users WHERE email = $1 AND deletedAt IS NULL`,
+      { bind: [ req.body.email ], model: models.User, plain: true })
       .then((authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
-        if (user.data?.id && user.data.totpSecret !== '') {
-          res.status(401).json({
-            status: 'totp_token_required',
-            data: {
-              tmpToken: security.authorize({
-                userId: user.data.id,
-                type: 'password_valid_needs_second_factor_token'
-              })
-            }
-          })
-        } else if (user.data?.id) {
-          afterLogin(user, res, next)
-        } else {
-          res.status(401).send(res.__('Invalid email or password.'))
+        // Constant-time password verification
+        const submittedHash = Buffer.from(security.hash(req.body.password), 'utf8')
+        const storedHash = Buffer.from(user.data.password, 'utf8')
+        if (submittedHash.length !== storedHash.length || !crypto.timingSafeEqual(submittedHash, storedHash)) {
+          return res.status(401).send(res.__('Invalid email or password.'))
         }
+        // TOTP verification if enabled
+        if (user.data.totpSecret) {
+          const totpValid = security.verifyTOTP(user.data.totpSecret, req.body.totpCode)
+          if (!totpValid) {
+            return res.status(401).send(res.__('Invalid email or password.'))
+          }
+        }
+        return afterLogin(user, res, next)
       }).catch((error: Error) => {
         next(error)
       })
